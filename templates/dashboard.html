@@ -1,0 +1,2514 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TeleBoost Dashboard — Telegram Member Increaser</title>
+    <meta name="description" content="Manage and automate Telegram group and channel member increases safely. High-retention SMM automation.">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <style>
+        /* ================================================================
+           DESIGN TOKENS (Shared with login page)
+           ================================================================ */
+        :root {
+            /* Colors */
+            --bg:             #07080d;
+            --surface:        #0f111a;
+            --surface-alt:    #141722;
+            --surface-hover:  #181c2b;
+            --border:         rgba(255, 255, 255, 0.08);
+            --border-hover:   rgba(255, 255, 255, 0.16);
+            --border-focus:   rgba(99, 102, 241, 0.6);
+
+            /* Primary: indigo-to-violet */
+            --primary-400:    #818cf8;
+            --primary-500:    #6366f1;
+            --primary-600:    #4f46e5;
+            --primary-glow:   rgba(99, 102, 241, 0.28);
+            --primary-gradient: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%);
+            --primary-gradient-hover: linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%);
+
+            /* Accents */
+            --accent-400:     #34d399;
+            --accent-500:     #10b981;
+            --accent-glow:    rgba(16, 185, 129, 0.20);
+            --amber-400:      #fbbf24;
+            --amber-500:      #f59e0b;
+            --amber-glow:     rgba(245, 158, 11, 0.18);
+
+            /* Semantic */
+            --success:        #10b981;
+            --warning:        #f59e0b;
+            --error:          #ef4444;
+            --error-bg:       rgba(239, 68, 68, 0.10);
+            --error-border:   rgba(239, 68, 68, 0.25);
+
+            /* Text */
+            --text-primary:   #f1f5f9;
+            --text-secondary: #94a3b8;
+            --text-tertiary:  #64748b;
+            --text-dim:       #475569;
+
+            /* Radii */
+            --radius-xs:      6px;
+            --radius-sm:      8px;
+            --radius-md:      12px;
+            --radius-lg:      16px;
+            --radius-xl:      20px;
+            --radius-2xl:     24px;
+
+            /* Shadows */
+            --shadow-card:    0 20px 50px -12px rgba(0, 0, 0, 0.55),
+                              0 0 0 1px rgba(255, 255, 255, 0.04) inset;
+            --shadow-glow:    0 0 35px -8px var(--primary-glow);
+            --shadow-amber:   0 0 30px -8px var(--amber-glow);
+
+            /* Transitions */
+            --ease-out:       cubic-bezier(0.16, 1, 0.3, 1);
+            --duration:       200ms;
+        }
+
+        /* ================================================================
+           RESET & BASE
+           ================================================================ */
+        *, *::before, *::after {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        html {
+            font-size: 16px;
+            scroll-behavior: smooth;
+        }
+
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: var(--bg);
+            color: var(--text-secondary);
+            min-height: 100vh;
+            -webkit-font-smoothing: antialiased;
+            -moz-osx-font-smoothing: grayscale;
+            overflow-x: hidden;
+            line-height: 1.5;
+        }
+
+        /* ================================================================
+           BACKGROUND EFFECTS
+           ================================================================ */
+        .bg-effects {
+            position: fixed;
+            inset: 0;
+            z-index: 0;
+            pointer-events: none;
+            overflow: hidden;
+        }
+
+        .bg-mesh {
+            position: absolute;
+            inset: 0;
+            background:
+                radial-gradient(ellipse 65% 50% at 20% 15%, rgba(99, 102, 241, 0.09) 0%, transparent 60%),
+                radial-gradient(ellipse 55% 55% at 80% 25%, rgba(139, 92, 246, 0.07) 0%, transparent 55%),
+                radial-gradient(ellipse 60% 45% at 50% 90%, rgba(16, 185, 129, 0.04) 0%, transparent 60%);
+        }
+
+        .bg-grid {
+            position: absolute;
+            inset: 0;
+            background-image: radial-gradient(rgba(255, 255, 255, 0.035) 1px, transparent 1px);
+            background-size: 32px 32px;
+            mask-image: radial-gradient(ellipse 80% 60% at 50% 30%, black 40%, transparent 85%);
+            -webkit-mask-image: radial-gradient(ellipse 80% 60% at 50% 30%, black 40%, transparent 85%);
+        }
+
+        .bg-glow {
+            position: absolute;
+            border-radius: 50%;
+            filter: blur(120px);
+            opacity: 0.6;
+            animation: glowDrift 22s ease-in-out infinite alternate;
+        }
+        .bg-glow--1 {
+            width: 450px;
+            height: 450px;
+            background: rgba(99, 102, 241, 0.12);
+            top: -12%;
+            left: 5%;
+        }
+        .bg-glow--2 {
+            width: 400px;
+            height: 400px;
+            background: rgba(139, 92, 246, 0.09);
+            bottom: 5%;
+            right: 0%;
+            animation-delay: -11s;
+        }
+        @keyframes glowDrift {
+            0%   { transform: translate(0, 0) scale(1); }
+            100% { transform: translate(35px, -25px) scale(1.12); }
+        }
+
+        @media (prefers-reduced-motion: reduce) {
+            .bg-glow { animation: none; }
+            * { transition-duration: 0.01ms !important; animation-duration: 0.01ms !important; }
+        }
+
+        /* ================================================================
+           LAYOUT CONTAINER
+           ================================================================ */
+        .page {
+            position: relative;
+            z-index: 1;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .container {
+            width: 100%;
+            max-width: 1240px;
+            margin: 0 auto;
+            padding: 0 24px;
+        }
+
+        /* ================================================================
+           STICKY NAVBAR
+           ================================================================ */
+        .navbar-wrapper {
+            position: sticky;
+            top: 0;
+            z-index: 50;
+            background: rgba(7, 8, 13, 0.82);
+            backdrop-filter: blur(18px);
+            -webkit-backdrop-filter: blur(18px);
+            border-bottom: 1px solid var(--border);
+            transition: border-color var(--duration) ease, background var(--duration) ease;
+        }
+
+        .navbar {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            height: 68px;
+        }
+
+        .nav-brand {
+            display: inline-flex;
+            align-items: center;
+            gap: 10px;
+            text-decoration: none;
+            color: var(--text-primary);
+            font-size: 1.15rem;
+            font-weight: 800;
+            letter-spacing: -0.02em;
+        }
+        .nav-brand__logo {
+            width: 34px;
+            height: 34px;
+            border-radius: var(--radius-sm);
+            background: var(--primary-gradient);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            box-shadow: 0 0 16px -2px var(--primary-glow);
+        }
+        .nav-brand__logo svg { width: 18px; height: 18px; }
+
+        .nav-brand__tag {
+            font-size: 10px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+            padding: 2px 7px;
+            border-radius: 100px;
+            background: rgba(99, 102, 241, 0.12);
+            border: 1px solid rgba(99, 102, 241, 0.25);
+            color: var(--primary-400);
+            margin-left: 2px;
+        }
+
+        /* Nav right user menu */
+        .nav-right {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            position: relative;
+        }
+
+        .status-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            background: rgba(16, 185, 129, 0.08);
+            border: 1px solid rgba(16, 185, 129, 0.22);
+            padding: 4px 10px;
+            border-radius: 100px;
+            font-size: 12px;
+            font-weight: 600;
+            color: var(--accent-400);
+        }
+        .status-dot {
+            width: 6px;
+            height: 6px;
+            border-radius: 50%;
+            background: var(--accent-400);
+            box-shadow: 0 0 8px var(--accent-400);
+            animation: pulseDot 2s infinite ease-in-out;
+        }
+        @keyframes pulseDot { 0%, 100% { opacity: 1; transform: scale(1); } 50% { opacity: 0.4; transform: scale(0.9); } }
+
+        /* User trigger button */
+        .user-menu-btn {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            background: rgba(255, 255, 255, 0.03);
+            border: 1px solid var(--border);
+            border-radius: 100px;
+            padding: 4px 12px 4px 4px;
+            cursor: pointer;
+            transition: all var(--duration) ease;
+            outline: none;
+            color: inherit;
+            font-family: inherit;
+        }
+        .user-menu-btn:hover, .user-menu-btn[aria-expanded="true"] {
+            background: rgba(255, 255, 255, 0.06);
+            border-color: var(--border-hover);
+        }
+        .user-menu-btn:focus-visible {
+            border-color: var(--primary-500);
+            box-shadow: 0 0 0 3px var(--primary-glow);
+        }
+
+        .nav-avatar {
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #6366f1, #a855f7);
+            color: white;
+            font-size: 13px;
+            font-weight: 700;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border: 1px solid rgba(255,255,255,0.15);
+        }
+        .nav-name {
+            font-size: 13px;
+            font-weight: 600;
+            color: var(--text-primary);
+            max-width: 120px;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+        .user-menu-chevron {
+            color: var(--text-tertiary);
+            transition: transform var(--duration) ease;
+        }
+        .user-menu-chevron svg { width: 14px; height: 14px; }
+        .user-menu-btn[aria-expanded="true"] .user-menu-chevron {
+            transform: rotate(180deg);
+        }
+
+        /* User dropdown */
+        .user-dropdown {
+            position: absolute;
+            top: calc(100% + 8px);
+            right: 0;
+            width: 240px;
+            background: var(--surface);
+            border: 1px solid var(--border-hover);
+            border-radius: var(--radius-md);
+            padding: 8px;
+            box-shadow: 0 16px 36px -8px rgba(0,0,0,0.65);
+            display: none;
+            animation: dropdownFade 0.2s var(--ease-out);
+            z-index: 60;
+        }
+        .user-dropdown.show { display: block; }
+        @keyframes dropdownFade { from { opacity: 0; transform: translateY(-6px); } to { opacity: 1; transform: translateY(0); } }
+
+        .dropdown-header {
+            padding: 8px 10px 10px;
+            border-bottom: 1px solid var(--border);
+            margin-bottom: 6px;
+        }
+        .dropdown-title { font-size: 13px; font-weight: 700; color: var(--text-primary); }
+        .dropdown-sub { font-size: 11px; color: var(--text-tertiary); }
+
+        .dropdown-item {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 8px 10px;
+            font-size: 13px;
+            font-weight: 500;
+            color: var(--text-secondary);
+            text-decoration: none;
+            border-radius: var(--radius-sm);
+            transition: all var(--duration) ease;
+            cursor: pointer;
+            border: none;
+            background: none;
+            width: 100%;
+            text-align: left;
+            font-family: inherit;
+        }
+        .dropdown-item svg { width: 16px; height: 16px; color: var(--text-tertiary); }
+        .dropdown-item:hover {
+            background: rgba(255, 255, 255, 0.05);
+            color: var(--text-primary);
+        }
+        .dropdown-item:hover svg { color: var(--text-primary); }
+        .dropdown-item--danger { color: #fca5a5; }
+        .dropdown-item--danger svg { color: #f87171; }
+        .dropdown-item--danger:hover { background: rgba(239, 68, 68, 0.12); color: #fecaca; }
+
+        /* Legacy logout fallback for selector compatibility */
+        .nav-logout { display: none; }
+
+        /* ================================================================
+           PAGE HEADER & TITLE
+           ================================================================ */
+        .dashboard-header {
+            padding: 36px 0 24px;
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+        }
+        .dashboard-title-row {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            flex-wrap: wrap;
+            gap: 16px;
+        }
+        .dashboard-title {
+            font-size: clamp(24px, 4vw, 32px);
+            font-weight: 800;
+            color: var(--text-primary);
+            letter-spacing: -0.025em;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+        .dashboard-subtitle {
+            font-size: 14px;
+            color: var(--text-tertiary);
+            line-height: 1.5;
+            max-width: 600px;
+        }
+
+        .header-actions {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        /* ================================================================
+           STATS ROW (3 KPI CARDS)
+           ================================================================ */
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 16px;
+            margin-bottom: 28px;
+        }
+
+        .stat-card {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: var(--radius-lg);
+            padding: 20px;
+            box-shadow: var(--shadow-card);
+            position: relative;
+            overflow: hidden;
+            transition: border-color var(--duration) ease, transform var(--duration) ease;
+        }
+        .stat-card:hover {
+            border-color: var(--border-hover);
+            transform: translateY(-2px);
+        }
+        .stat-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 20px;
+            right: 20px;
+            height: 1px;
+            background: linear-gradient(90deg, transparent, rgba(99,102,241,0.25), transparent);
+        }
+        .stat-card--accent::before {
+            background: linear-gradient(90deg, transparent, rgba(16,185,129,0.3), transparent);
+        }
+        .stat-card--warning::before {
+            background: linear-gradient(90deg, transparent, rgba(245,158,11,0.3), transparent);
+        }
+
+        .stat-top {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 12px;
+        }
+        .stat-icon-tile {
+            width: 40px;
+            height: 40px;
+            border-radius: var(--radius-md);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .stat-icon-tile svg { width: 20px; height: 20px; }
+        .stat-icon-tile--primary {
+            background: rgba(99, 102, 241, 0.12);
+            color: var(--primary-400);
+            border: 1px solid rgba(99, 102, 241, 0.20);
+        }
+        .stat-icon-tile--amber {
+            background: rgba(245, 158, 11, 0.12);
+            color: var(--amber-400);
+            border: 1px solid rgba(245, 158, 11, 0.20);
+        }
+        .stat-icon-tile--emerald {
+            background: rgba(16, 185, 129, 0.12);
+            color: var(--accent-400);
+            border: 1px solid rgba(16, 185, 129, 0.20);
+        }
+
+        .stat-badge {
+            font-size: 11px;
+            font-weight: 600;
+            padding: 3px 8px;
+            border-radius: 100px;
+            background: rgba(255, 255, 255, 0.04);
+            color: var(--text-tertiary);
+        }
+
+        .stat-value {
+            font-size: 28px;
+            font-weight: 800;
+            color: var(--text-primary);
+            letter-spacing: -0.02em;
+            line-height: 1.1;
+            margin-bottom: 4px;
+            font-variant-numeric: tabular-nums;
+        }
+        .stat-label {
+            font-size: 13px;
+            font-weight: 600;
+            color: var(--text-secondary);
+        }
+        .stat-hint {
+            font-size: 12px;
+            color: var(--text-tertiary);
+            margin-top: 6px;
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+        .stat-hint svg { width: 13px; height: 13px; }
+
+        /* Legacy .stats-row compatibility wrapper */
+        .stats-row { display: contents; }
+        .stat-icon { display: none; }
+
+        /* ================================================================
+           MAIN 12-COLUMN GRID (ORDER FORM + HOW IT WORKS)
+           ================================================================ */
+        .main-grid {
+            display: grid;
+            grid-template-columns: 7fr 5fr;
+            gap: 24px;
+            align-items: stretch;
+            margin-bottom: 32px;
+        }
+
+        .card {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: var(--radius-xl);
+            padding: 28px;
+            box-shadow: var(--shadow-card);
+            position: relative;
+            display: flex;
+            flex-direction: column;
+        }
+        .card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 24px;
+            right: 24px;
+            height: 1px;
+            background: linear-gradient(90deg, transparent, rgba(99,102,241,0.30), rgba(139,92,246,0.18), transparent);
+        }
+
+        .card-header {
+            display: flex;
+            align-items: flex-start;
+            gap: 14px;
+            margin-bottom: 18px;
+        }
+        .card-header-icon {
+            width: 40px;
+            height: 40px;
+            min-width: 40px;
+            border-radius: var(--radius-md);
+            background: rgba(99, 102, 241, 0.10);
+            border: 1px solid rgba(99, 102, 241, 0.20);
+            color: var(--primary-400);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .card-header-icon svg { width: 20px; height: 20px; }
+
+        .card-header-text { flex: 1; }
+        .card-title {
+            font-size: 19px;
+            font-weight: 700;
+            color: var(--text-primary);
+            letter-spacing: -0.01em;
+            margin-bottom: 3px;
+        }
+        .card-desc {
+            font-size: 13.5px;
+            color: var(--text-tertiary);
+            line-height: 1.5;
+        }
+
+        /* ================================================================
+           WARNING / INFO BANNER
+           ================================================================ */
+        .alert-banner {
+            background: rgba(245, 158, 11, 0.08);
+            border: 1px solid rgba(245, 158, 11, 0.22);
+            border-radius: var(--radius-md);
+            padding: 14px 16px;
+            margin-bottom: 22px;
+            display: flex;
+            align-items: flex-start;
+            gap: 12px;
+            transition: opacity var(--duration) ease, transform var(--duration) ease;
+        }
+        .alert-banner__icon {
+            color: var(--amber-400);
+            margin-top: 1px;
+            flex-shrink: 0;
+        }
+        .alert-banner__icon svg { width: 18px; height: 18px; }
+        .alert-banner__content {
+            flex: 1;
+            font-size: 13px;
+            color: #fde68a;
+            line-height: 1.5;
+        }
+        .alert-banner__content strong { color: white; font-weight: 600; }
+        .alert-banner__close {
+            background: none;
+            border: none;
+            color: rgba(245, 158, 11, 0.6);
+            cursor: pointer;
+            padding: 2px;
+            border-radius: 4px;
+            transition: color var(--duration) ease;
+        }
+        .alert-banner__close:hover { color: #fde68a; }
+        .alert-banner__close svg { width: 14px; height: 14px; }
+
+        /* Legacy .limit-box compatibility */
+        .limit-box { display: contents; }
+        .limit-box .icon { display: none; }
+
+        /* ================================================================
+           FORM COMPONENTS
+           ================================================================ */
+        .form-group {
+            margin-bottom: 20px;
+        }
+        .form-label-row {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 8px;
+        }
+        .form-label {
+            font-size: 13.5px;
+            font-weight: 600;
+            color: var(--text-secondary);
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+        .form-hint-badge {
+            font-size: 11px;
+            font-weight: 500;
+            color: var(--accent-400);
+            background: rgba(16, 185, 129, 0.08);
+            border: 1px solid rgba(16, 185, 129, 0.2);
+            padding: 2px 7px;
+            border-radius: 100px;
+        }
+
+        /* Input with prefix */
+        .input-wrapper {
+            position: relative;
+            display: flex;
+            align-items: center;
+            width: 100%;
+        }
+        .input-prefix-icon {
+            position: absolute;
+            left: 14px;
+            color: var(--text-tertiary);
+            font-size: 16px;
+            font-weight: 700;
+            pointer-events: none;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .input-field {
+            width: 100%;
+            height: 50px;
+            padding: 0 16px;
+            background: rgba(255, 255, 255, 0.03);
+            border: 1px solid var(--border);
+            border-radius: var(--radius-md);
+            color: var(--text-primary);
+            font-family: inherit;
+            font-size: 16px; /* 16px prevents iOS Safari auto-zoom */
+            font-weight: 500;
+            outline: none;
+            transition: border-color var(--duration) ease, box-shadow var(--duration) ease, background var(--duration) ease;
+        }
+        .input-field--prefix {
+            padding-left: 36px;
+        }
+        .input-field::placeholder {
+            color: var(--text-dim);
+            font-weight: 400;
+        }
+        .input-field:focus {
+            border-color: var(--primary-500);
+            box-shadow: 0 0 0 3px var(--primary-glow);
+            background: rgba(255, 255, 255, 0.045);
+        }
+        .input-field.is-invalid {
+            border-color: var(--error);
+        }
+        .input-field.is-invalid:focus {
+            box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.2);
+        }
+
+        .field-feedback {
+            font-size: 12px;
+            margin-top: 6px;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            color: var(--text-tertiary);
+        }
+        .field-feedback--error { color: #fca5a5; }
+        .field-feedback--warning { color: #fde68a; }
+        .field-feedback svg { width: 13px; height: 13px; }
+
+        /* Legacy wrappers */
+        .input-prefix { display: contents; }
+        .input-prefix .prefix { display: none; }
+
+        /* Quick-select chips */
+        .chips-row {
+            display: flex;
+            gap: 8px;
+            margin-top: 8px;
+            flex-wrap: wrap;
+        }
+        .chip-btn {
+            background: rgba(255, 255, 255, 0.03);
+            border: 1px solid var(--border);
+            border-radius: var(--radius-sm);
+            color: var(--text-secondary);
+            font-family: inherit;
+            font-size: 12.5px;
+            font-weight: 600;
+            padding: 6px 12px;
+            cursor: pointer;
+            transition: all var(--duration) ease;
+        }
+        .chip-btn:hover {
+            background: rgba(255, 255, 255, 0.06);
+            border-color: var(--border-hover);
+            color: var(--text-primary);
+        }
+        .chip-btn.active {
+            background: rgba(99, 102, 241, 0.15);
+            border-color: var(--primary-500);
+            color: var(--primary-400);
+            box-shadow: 0 0 12px -2px var(--primary-glow);
+        }
+
+        /* Service Type Segmented Radio Cards */
+        .service-cards {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 12px;
+        }
+        .service-card {
+            background: rgba(255, 255, 255, 0.025);
+            border: 1px solid var(--border);
+            border-radius: var(--radius-md);
+            padding: 14px;
+            cursor: pointer;
+            transition: all var(--duration) ease;
+            position: relative;
+            display: flex;
+            align-items: flex-start;
+            gap: 12px;
+            user-select: none;
+        }
+        .service-card:hover {
+            background: rgba(255, 255, 255, 0.045);
+            border-color: var(--border-hover);
+        }
+        .service-card.selected {
+            background: rgba(99, 102, 241, 0.09);
+            border-color: var(--primary-500);
+            box-shadow: 0 0 20px -5px var(--primary-glow);
+        }
+
+        .service-card__icon {
+            width: 36px;
+            height: 36px;
+            border-radius: var(--radius-sm);
+            background: rgba(255, 255, 255, 0.04);
+            color: var(--text-secondary);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all var(--duration) ease;
+        }
+        .service-card.selected .service-card__icon {
+            background: var(--primary-gradient);
+            color: white;
+            box-shadow: 0 0 12px -2px var(--primary-glow);
+        }
+        .service-card__icon svg { width: 18px; height: 18px; }
+
+        .service-card__body { flex: 1; }
+        .service-card__title {
+            font-size: 13.5px;
+            font-weight: 700;
+            color: var(--text-primary);
+            margin-bottom: 2px;
+        }
+        .service-card__desc {
+            font-size: 11.5px;
+            color: var(--text-tertiary);
+            line-height: 1.4;
+        }
+
+        .service-card__radio-check {
+            width: 18px;
+            height: 18px;
+            border-radius: 50%;
+            border: 2px solid var(--border);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all var(--duration) ease;
+            margin-top: 2px;
+        }
+        .service-card.selected .service-card__radio-check {
+            border-color: var(--primary-500);
+            background: var(--primary-500);
+        }
+        .service-card__radio-check::after {
+            content: '';
+            width: 6px;
+            height: 6px;
+            border-radius: 50%;
+            background: white;
+            opacity: 0;
+            transform: scale(0.5);
+            transition: all var(--duration) ease;
+        }
+        .service-card.selected .service-card__radio-check::after {
+            opacity: 1;
+            transform: scale(1);
+        }
+
+        /* Underlying hidden select kept for strict backward compatibility */
+        #service-type {
+            position: absolute;
+            opacity: 0;
+            pointer-events: none;
+            width: 1px;
+            height: 1px;
+        }
+
+        /* ================================================================
+           LIVE ORDER SUMMARY
+           ================================================================ */
+        .order-summary {
+            background: rgba(255, 255, 255, 0.02);
+            border: 1px solid var(--border);
+            border-radius: var(--radius-md);
+            padding: 16px;
+            margin-bottom: 20px;
+        }
+        .order-summary__title {
+            font-size: 12px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.06em;
+            color: var(--text-tertiary);
+            margin-bottom: 12px;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+        .order-summary__title svg { width: 14px; height: 14px; color: var(--primary-400); }
+
+        .summary-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 12px;
+        }
+        .summary-item {
+            display: flex;
+            flex-direction: column;
+            gap: 2px;
+        }
+        .summary-item__label { font-size: 11.5px; color: var(--text-tertiary); }
+        .summary-item__value {
+            font-size: 13.5px;
+            font-weight: 700;
+            color: var(--text-primary);
+            font-variant-numeric: tabular-nums;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        /* ================================================================
+           SUBMIT BUTTON
+           ================================================================ */
+        .btn-submit {
+            width: 100%;
+            height: 52px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+            background: var(--primary-gradient);
+            color: white;
+            border: none;
+            border-radius: var(--radius-md);
+            font-family: inherit;
+            font-size: 15px;
+            font-weight: 700;
+            cursor: pointer;
+            transition: all var(--duration) ease;
+            position: relative;
+            overflow: hidden;
+            box-shadow: 0 4px 20px -2px var(--primary-glow);
+        }
+        .btn-submit:hover {
+            background: var(--primary-gradient-hover);
+            box-shadow: 0 8px 30px 0 var(--primary-glow);
+            transform: translateY(-1px);
+        }
+        .btn-submit:active {
+            transform: translateY(0);
+        }
+        .btn-submit:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none;
+            box-shadow: none;
+        }
+        .btn-submit svg { width: 18px; height: 18px; }
+
+        /* Shimmer effect on button */
+        .btn-submit::after {
+            content: '';
+            position: absolute;
+            inset: 0;
+            background: linear-gradient(90deg, transparent 0%, rgba(255,255,255,0.12) 50%, transparent 100%);
+            transform: translateX(-100%);
+            transition: transform 0.6s ease;
+        }
+        .btn-submit:hover::after {
+            transform: translateX(100%);
+        }
+
+        .btn-spinner {
+            width: 18px;
+            height: 18px;
+            border: 2px solid rgba(255, 255, 255, 0.3);
+            border-top-color: white;
+            border-radius: 50%;
+            animation: spin 0.65s linear infinite;
+        }
+        @keyframes spin { to { transform: rotate(360deg); } }
+
+        /* Legacy class compatibility */
+        .btn { width: 100%; }
+        .btn-success { background: var(--primary-gradient); }
+
+        /* ================================================================
+           HOW IT WORKS STEPPER (RIGHT COLUMN)
+           ================================================================ */
+        .stepper {
+            display: flex;
+            flex-direction: column;
+            gap: 0;
+            margin: 8px 0 20px;
+            position: relative;
+        }
+
+        .step-item {
+            display: flex;
+            align-items: flex-start;
+            gap: 16px;
+            position: relative;
+            padding-bottom: 24px;
+        }
+        .step-item:last-child {
+            padding-bottom: 8px;
+        }
+
+        /* Connecting vertical line */
+        .step-item:not(:last-child)::after {
+            content: '';
+            position: absolute;
+            top: 36px;
+            left: 17px;
+            bottom: 0;
+            width: 2px;
+            background: linear-gradient(180deg, rgba(99,102,241,0.3) 0%, rgba(255,255,255,0.06) 100%);
+        }
+
+        .step-node {
+            width: 36px;
+            height: 36px;
+            min-width: 36px;
+            border-radius: 50%;
+            background: var(--surface-alt);
+            border: 2px solid rgba(99, 102, 241, 0.35);
+            color: var(--primary-400);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 13px;
+            font-weight: 800;
+            z-index: 2;
+            transition: all var(--duration) ease;
+        }
+        .step-item:hover .step-node {
+            border-color: var(--primary-400);
+            background: rgba(99, 102, 241, 0.15);
+            box-shadow: 0 0 14px var(--primary-glow);
+        }
+
+        .step-content {
+            flex: 1;
+            padding-top: 5px;
+        }
+        .step-title {
+            font-size: 14px;
+            font-weight: 700;
+            color: var(--text-primary);
+            margin-bottom: 2px;
+        }
+        .step-desc {
+            font-size: 13px;
+            color: var(--text-tertiary);
+            line-height: 1.45;
+        }
+        .step-desc strong {
+            color: var(--text-secondary);
+        }
+
+        /* Pro tip card */
+        .protip-card {
+            background: rgba(99, 102, 241, 0.06);
+            border: 1px solid rgba(99, 102, 241, 0.18);
+            border-radius: var(--radius-md);
+            padding: 16px;
+            display: flex;
+            align-items: flex-start;
+            gap: 12px;
+            margin-top: auto;
+        }
+        .protip-icon {
+            color: var(--amber-400);
+            flex-shrink: 0;
+            margin-top: 1px;
+        }
+        .protip-icon svg { width: 18px; height: 18px; }
+        .protip-text {
+            font-size: 12.5px;
+            color: #c7d2fe;
+            line-height: 1.5;
+        }
+        .protip-text strong {
+            color: #ffffff;
+            font-weight: 700;
+        }
+
+        /* Legacy .info-list compatibility */
+        .info-list { display: contents; }
+        .info-list li { display: contents; }
+        .info-list .num { display: none; }
+
+        /* ================================================================
+           RECENT ORDERS SECTION
+           ================================================================ */
+        .orders-section {
+            margin-bottom: 40px;
+        }
+        .orders-card {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: var(--radius-xl);
+            padding: 24px;
+            box-shadow: var(--shadow-card);
+        }
+        .orders-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+            gap: 12px;
+        }
+        .orders-title-group {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        .orders-title-icon {
+            width: 32px;
+            height: 32px;
+            border-radius: var(--radius-sm);
+            background: rgba(16, 185, 129, 0.12);
+            color: var(--accent-400);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .orders-title-icon svg { width: 16px; height: 16px; }
+        .orders-title {
+            font-size: 17px;
+            font-weight: 700;
+            color: var(--text-primary);
+        }
+        .orders-count-badge {
+            font-size: 12px;
+            font-weight: 600;
+            padding: 2px 8px;
+            border-radius: 100px;
+            background: rgba(255, 255, 255, 0.05);
+            color: var(--text-tertiary);
+        }
+
+        .table-responsive {
+            width: 100%;
+            overflow-x: auto;
+            -webkit-overflow-scrolling: touch;
+        }
+
+        .orders-table {
+            width: 100%;
+            border-collapse: collapse;
+            text-align: left;
+            font-size: 13.5px;
+        }
+        .orders-table th {
+            font-size: 11.5px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.06em;
+            color: var(--text-tertiary);
+            padding: 12px 16px;
+            border-bottom: 1px solid var(--border);
+            white-space: nowrap;
+        }
+        .orders-table td {
+            padding: 14px 16px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+            color: var(--text-secondary);
+            vertical-align: middle;
+            white-space: nowrap;
+        }
+        .orders-table tr:hover td {
+            background: rgba(255, 255, 255, 0.015);
+        }
+        .order-id {
+            font-family: monospace;
+            font-weight: 600;
+            color: var(--primary-400);
+            font-size: 13px;
+        }
+        .order-channel-tag {
+            font-weight: 600;
+            color: var(--text-primary);
+        }
+        .status-pill {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            font-size: 11.5px;
+            font-weight: 600;
+            padding: 3px 10px;
+            border-radius: 100px;
+        }
+        .status-pill--processing {
+            background: rgba(245, 158, 11, 0.12);
+            color: #fde68a;
+            border: 1px solid rgba(245, 158, 11, 0.25);
+        }
+        .status-pill--processing .dot {
+            width: 6px; height: 6px; border-radius: 50%; background: var(--amber-400);
+            animation: pulseDot 1.5s infinite;
+        }
+        .status-pill--completed {
+            background: rgba(16, 185, 129, 0.12);
+            color: #a7f3d0;
+            border: 1px solid rgba(16, 185, 129, 0.25);
+        }
+        .status-pill--completed .dot {
+            width: 6px; height: 6px; border-radius: 50%; background: var(--accent-400);
+        }
+
+        /* Empty state */
+        .empty-orders {
+            text-align: center;
+            padding: 36px 16px;
+            color: var(--text-tertiary);
+        }
+        .empty-orders__icon {
+            width: 52px;
+            height: 52px;
+            margin: 0 auto 12px;
+            border-radius: 50%;
+            background: rgba(255, 255, 255, 0.03);
+            border: 1px dashed var(--border);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: var(--text-dim);
+        }
+        .empty-orders__icon svg { width: 22px; height: 22px; }
+        .empty-orders__title {
+            font-size: 15px;
+            font-weight: 600;
+            color: var(--text-secondary);
+            margin-bottom: 4px;
+        }
+        .empty-orders__desc { font-size: 13px; max-width: 380px; margin: 0 auto; }
+
+        /* ================================================================
+           WAITING / PROCESSING SCREEN (REPLACES MAIN GRID)
+           ================================================================ */
+        .waiting-card-wrapper {
+            max-width: 640px;
+            margin: 0 auto 40px;
+            width: 100%;
+        }
+
+        .waiting-screen {
+            text-align: center;
+            padding: 12px 4px;
+        }
+
+        .waiting-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 6px 14px;
+            border-radius: 100px;
+            background: rgba(16, 185, 129, 0.10);
+            border: 1px solid rgba(16, 185, 129, 0.25);
+            font-size: 12px;
+            font-weight: 700;
+            color: var(--accent-400);
+            text-transform: uppercase;
+            letter-spacing: 0.06em;
+            margin-bottom: 20px;
+        }
+        .waiting-badge svg { width: 14px; height: 14px; }
+
+        .waiting-icon-pulse {
+            width: 68px;
+            height: 68px;
+            margin: 0 auto 20px;
+            border-radius: 50%;
+            background: rgba(99, 102, 241, 0.12);
+            border: 1px solid rgba(99, 102, 241, 0.25);
+            color: var(--primary-400);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 0 35px -5px var(--primary-glow);
+            animation: pulseGlow 2.5s infinite ease-in-out;
+        }
+        .waiting-icon-pulse svg { width: 32px; height: 32px; }
+        @keyframes pulseGlow {
+            0%, 100% { transform: scale(1); box-shadow: 0 0 25px -5px var(--primary-glow); }
+            50%      { transform: scale(1.06); box-shadow: 0 0 45px 0 var(--primary-glow); }
+        }
+
+        .waiting-title {
+            font-size: 24px;
+            font-weight: 800;
+            color: var(--text-primary);
+            letter-spacing: -0.02em;
+            margin-bottom: 8px;
+        }
+        .waiting-desc {
+            font-size: 14px;
+            color: var(--text-secondary);
+            line-height: 1.6;
+            margin-bottom: 24px;
+            max-width: 520px;
+            margin-left: auto;
+            margin-right: auto;
+        }
+
+        .order-detail-card {
+            background: rgba(255, 255, 255, 0.025);
+            border: 1px solid var(--border);
+            border-radius: var(--radius-md);
+            padding: 18px 20px;
+            text-align: left;
+            margin-bottom: 24px;
+        }
+        .order-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 10px 0;
+            font-size: 13.5px;
+        }
+        .order-row + .order-row {
+            border-top: 1px dashed rgba(255, 255, 255, 0.06);
+        }
+        .order-label { color: var(--text-tertiary); font-weight: 500; }
+        .order-val { color: var(--text-primary); font-weight: 700; }
+
+        .progress-bar-container {
+            width: 100%;
+            height: 8px;
+            background: rgba(255, 255, 255, 0.06);
+            border-radius: 100px;
+            overflow: hidden;
+            margin-bottom: 8px;
+        }
+        .progress-bar-fill {
+            height: 100%;
+            border-radius: 100px;
+            background: var(--primary-gradient);
+            transition: width 1s ease;
+            box-shadow: 0 0 12px var(--primary-glow);
+        }
+        .progress-caption {
+            font-size: 12px;
+            color: var(--text-tertiary);
+            margin-bottom: 24px;
+        }
+
+        /* Countdown display */
+        .countdown-container {
+            background: rgba(99, 102, 241, 0.06);
+            border: 1px solid rgba(99, 102, 241, 0.20);
+            border-radius: var(--radius-lg);
+            padding: 20px;
+            margin-bottom: 24px;
+        }
+        .countdown-label {
+            font-size: 11.5px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+            color: var(--primary-400);
+            margin-bottom: 12px;
+        }
+        .countdown-digits {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 16px;
+        }
+        .countdown-unit {
+            text-align: center;
+            min-width: 64px;
+        }
+        .countdown-num {
+            font-size: clamp(28px, 6vw, 38px);
+            font-weight: 800;
+            color: var(--text-primary);
+            font-variant-numeric: tabular-nums;
+            line-height: 1;
+            margin-bottom: 4px;
+        }
+        .countdown-lbl {
+            font-size: 11px;
+            font-weight: 600;
+            text-transform: uppercase;
+            color: var(--text-tertiary);
+            letter-spacing: 0.06em;
+        }
+        .countdown-sep {
+            font-size: 28px;
+            font-weight: 800;
+            color: var(--text-dim);
+            line-height: 1;
+            margin-top: -12px;
+        }
+
+        .btn-new {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid var(--border);
+            color: var(--text-secondary);
+            padding: 12px 24px;
+            border-radius: var(--radius-md);
+            font-family: inherit;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all var(--duration) ease;
+        }
+        .btn-new:hover {
+            background: rgba(255, 255, 255, 0.09);
+            color: var(--text-primary);
+            border-color: var(--border-hover);
+        }
+        .btn-new svg { width: 16px; height: 16px; }
+
+        /* Legacy .waiting-icon compatibility */
+        .waiting-icon { display: none; }
+
+        /* ================================================================
+           TOAST NOTIFICATIONS
+           ================================================================ */
+        .toast-container {
+            position: fixed;
+            top: 24px;
+            right: 24px;
+            z-index: 100;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            pointer-events: none;
+        }
+        .toast {
+            pointer-events: auto;
+            background: var(--surface);
+            border: 1px solid var(--border-hover);
+            border-radius: var(--radius-md);
+            padding: 14px 18px;
+            box-shadow: 0 16px 36px -4px rgba(0,0,0,0.6);
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            min-width: 280px;
+            max-width: 400px;
+            animation: toastIn 0.25s var(--ease-out);
+            font-size: 13.5px;
+            color: var(--text-primary);
+        }
+        @keyframes toastIn { from { opacity: 0; transform: translateY(-10px) scale(0.95); } to { opacity: 1; transform: translateY(0) scale(1); } }
+        .toast--success { border-color: rgba(16, 185, 129, 0.4); }
+        .toast--success svg { color: var(--accent-400); }
+        .toast--error { border-color: rgba(239, 68, 68, 0.4); }
+        .toast--error svg { color: #f87171; }
+        .toast svg { width: 18px; height: 18px; flex-shrink: 0; }
+
+        /* Legacy form-alert */
+        #form-alert { margin-top: 12px; }
+        .alert {
+            padding: 10px 14px;
+            border-radius: var(--radius-md);
+            font-size: 13px;
+            margin-bottom: 12px;
+        }
+        .alert-error { background: var(--error-bg); border: 1px solid var(--error-border); color: #fca5a5; }
+        .alert-success { background: rgba(16, 185, 129, 0.1); border: 1px solid rgba(16, 185, 129, 0.25); color: #a7f3d0; }
+
+        .hidden { display: none !important; }
+
+        /* ================================================================
+           FOOTER
+           ================================================================ */
+        .footer {
+            margin-top: auto;
+            padding: 32px 0;
+            border-top: 1px solid var(--border);
+            text-align: center;
+        }
+        .footer-inner {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            flex-wrap: wrap;
+            gap: 16px;
+        }
+        .footer-copy {
+            font-size: 13px;
+            color: var(--text-dim);
+        }
+        .footer-links {
+            display: flex;
+            gap: 20px;
+            list-style: none;
+        }
+        .footer-links a {
+            font-size: 13px;
+            color: var(--text-tertiary);
+            text-decoration: none;
+            transition: color var(--duration) ease;
+        }
+        .footer-links a:hover { color: var(--text-primary); }
+
+        /* ================================================================
+           RESPONSIVE BREAKPOINTS (Mobile-First approach)
+           ================================================================ */
+        @media (max-width: 1023px) {
+            .main-grid {
+                grid-template-columns: 1fr;
+                gap: 24px;
+            }
+            .stats-grid {
+                grid-template-columns: repeat(3, 1fr);
+                gap: 12px;
+            }
+            .step-item:not(:last-child)::after {
+                left: 17px;
+            }
+        }
+
+        @media (max-width: 767px) {
+            .container { padding: 0 16px; }
+            .dashboard-header { padding: 24px 0 16px; }
+            .dashboard-title { font-size: 24px; }
+            .stats-grid {
+                grid-template-columns: 1fr;
+                gap: 10px;
+            }
+            .stat-card { padding: 16px; }
+            .card { padding: 20px 16px; border-radius: var(--radius-lg); }
+
+            .service-cards {
+                grid-template-columns: 1fr;
+                gap: 10px;
+            }
+            .summary-grid {
+                grid-template-columns: 1fr 1fr;
+                gap: 10px;
+            }
+
+            .toast-container {
+                top: auto;
+                bottom: 20px;
+                right: 16px;
+                left: 16px;
+                align-items: center;
+            }
+            .toast { width: 100%; max-width: 100%; }
+
+            /* On mobile, transform table rows to stacked cards */
+            .orders-table thead { display: none; }
+            .orders-table, .orders-table tbody, .orders-table tr, .orders-table td {
+                display: block;
+                width: 100%;
+            }
+            .orders-table tr {
+                background: rgba(255, 255, 255, 0.02);
+                border: 1px solid var(--border);
+                border-radius: var(--radius-md);
+                padding: 12px 14px;
+                margin-bottom: 12px;
+            }
+            .orders-table td {
+                padding: 6px 0;
+                border: none;
+                display: flex;
+                justify-content: space-between;
+                align-items: center;
+                white-space: normal;
+            }
+            .orders-table td::before {
+                content: attr(data-label);
+                font-size: 11.5px;
+                font-weight: 600;
+                text-transform: uppercase;
+                color: var(--text-tertiary);
+            }
+
+            .footer-inner {
+                flex-direction: column;
+                justify-content: center;
+                text-align: center;
+                gap: 12px;
+            }
+        }
+
+        @media (max-width: 420px) {
+            .chips-row { gap: 6px; }
+            .chip-btn { padding: 6px 10px; font-size: 12px; }
+            .countdown-digits { gap: 10px; }
+            .countdown-num { font-size: 26px; }
+            .countdown-unit { min-width: 50px; }
+            .countdown-sep { font-size: 22px; }
+            .summary-grid { grid-template-columns: 1fr; }
+        }
+    </style>
+</head>
+<body>
+    <!-- Background visual mesh and glow effects -->
+    <div class="bg-effects" aria-hidden="true">
+        <div class="bg-mesh"></div>
+        <div class="bg-grid"></div>
+        <div class="bg-glow bg-glow--1"></div>
+        <div class="bg-glow bg-glow--2"></div>
+    </div>
+
+    <!-- Legacy orb elements for backwards DOM safety -->
+    <div class="orb orb-1" style="display:none;" aria-hidden="true"></div>
+    <div class="orb orb-2" style="display:none;" aria-hidden="true"></div>
+    <div class="orb orb-3" style="display:none;" aria-hidden="true"></div>
+
+    <div class="page">
+        <!-- ── Sticky Translucent Navigation ── -->
+        <header class="navbar-wrapper">
+            <div class="container">
+                <nav class="navbar" aria-label="Main Navigation">
+                    <a href="/" class="nav-brand">
+                        <div class="nav-brand__logo" aria-hidden="true">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
+                        </div>
+                        <span>TeleBoost</span>
+                        <span class="nav-brand__tag">Pro</span>
+                    </a>
+
+                    <div class="nav-right">
+                        <div class="status-badge" title="Service operational">
+                            <span class="status-dot"></span>
+                            <span>Automation Online</span>
+                        </div>
+
+                        <!-- User Profile Dropdown Button -->
+                        <div style="position: relative;">
+                            <button type="button" class="user-menu-btn" id="user-menu-btn" aria-expanded="false" aria-haspopup="true" onclick="toggleUserDropdown(event)">
+                                <div class="nav-avatar" id="nav-avatar">T</div>
+                                <span class="nav-name" id="nav-name">User</span>
+                                <span class="user-menu-chevron" aria-hidden="true">
+                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+                                </span>
+                            </button>
+
+                            <!-- Dropdown Menu -->
+                            <div class="user-dropdown" id="user-dropdown" role="menu">
+                                <div class="dropdown-header">
+                                    <div class="dropdown-title" id="dropdown-username">Telegram User</div>
+                                    <div class="dropdown-sub" id="dropdown-phone">Active Telegram Session</div>
+                                </div>
+                                <a href="/" class="dropdown-item dropdown-item--danger" role="menuitem" onclick="handleSignOut(event)">
+                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+                                    <span>Sign Out</span>
+                                </a>
+                            </div>
+                        </div>
+
+                        <!-- Hidden legacy anchor for backwards compatibility -->
+                        <a href="/" class="nav-logout" id="nav-logout-fallback">Sign Out</a>
+                    </div>
+                </nav>
+            </div>
+        </header>
+
+        <main class="container" style="flex: 1;">
+            <!-- ── Page Title & Breadcrumb ── -->
+            <section class="dashboard-header">
+                <div class="dashboard-title-row">
+                    <div>
+                        <h1 class="dashboard-title">
+                            <span>Dashboard</span>
+                        </h1>
+                        <p class="dashboard-subtitle">Create and track your high-retention Telegram group and channel member orders.</p>
+                    </div>
+                    <div class="header-actions">
+                        <button type="button" class="btn-new" onclick="refreshDashboardData()" style="padding: 8px 14px; font-size: 13px;">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>
+                            <span>Refresh</span>
+                        </button>
+                    </div>
+                </div>
+            </section>
+
+            <!-- ── Stats Row (3 Cards) ── -->
+            <section class="stats-grid" aria-label="Key Performance Indicators">
+                <!-- Stat 1: Max Members -->
+                <div class="stat-card stat-card--accent">
+                    <div class="stat-top">
+                        <div class="stat-icon-tile stat-icon-tile--emerald">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+                        </div>
+                        <span class="stat-badge">Daily Cap</span>
+                    </div>
+                    <div class="stat-value">1,000</div>
+                    <div class="stat-label">Max Members / Day</div>
+                    <div class="stat-hint">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+                        <span>Protects against Telegram limit flags</span>
+                    </div>
+                </div>
+
+                <!-- Stat 2: Delivery Speed -->
+                <div class="stat-card stat-card--warning">
+                    <div class="stat-top">
+                        <div class="stat-icon-tile stat-icon-tile--amber">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+                        </div>
+                        <span class="stat-badge">Average</span>
+                    </div>
+                    <div class="stat-value">24h</div>
+                    <div class="stat-label">Delivery Window</div>
+                    <div class="stat-hint">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
+                        <span>Natural drip-feed delivery rate</span>
+                    </div>
+                </div>
+
+                <!-- Stat 3: Safety Rating -->
+                <div class="stat-card">
+                    <div class="stat-top">
+                        <div class="stat-icon-tile stat-icon-tile--primary">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><path d="m9 12 2 2 4-4"/></svg>
+                        </div>
+                        <span class="stat-badge">Verified</span>
+                    </div>
+                    <div class="stat-value">100%</div>
+                    <div class="stat-label">Safe &amp; Organic</div>
+                    <div class="stat-hint">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+                        <span>Zero risk of ban or penalty</span>
+                    </div>
+                </div>
+            </section>
+
+            <!-- ── Main Grid: Order Form + How It Works ── -->
+            <div class="main-grid" id="main-content">
+                <!-- ════════ LEFT: ORDER FORM ════════ -->
+                <div class="card" id="order-form-card">
+                    <div class="card-header">
+                        <div class="card-header-icon" aria-hidden="true">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
+                        </div>
+                        <div class="card-header-text">
+                            <h2 class="card-title">Boost Channel / Group</h2>
+                            <p class="card-desc">Enter your Telegram channel or group username below to schedule member delivery.</p>
+                        </div>
+                    </div>
+
+                    <!-- Soft Warning Banner -->
+                    <div class="alert-banner" id="quota-banner">
+                        <div class="alert-banner__icon">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+                        </div>
+                        <div class="alert-banner__content">
+                            <strong>Daily Limit Notice:</strong> Max 1,000 members per day per channel or group. Orders above 1,000 are split across consecutive 24-hour cycles.
+                        </div>
+                        <button type="button" class="alert-banner__close" onclick="dismissBanner()" aria-label="Dismiss banner">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+                        </button>
+                    </div>
+
+                    <!-- Boost Order Form -->
+                    <form id="boost-form" onsubmit="handleSubmitOrder(event)" novalidate>
+                        <!-- 1. Username Field -->
+                        <div class="form-group">
+                            <div class="form-label-row">
+                                <label for="channel-username" class="form-label">Channel or Group Username</label>
+                                <span class="form-hint-badge">Public Link</span>
+                            </div>
+                            <div class="input-wrapper">
+                                <span class="input-prefix-icon" aria-hidden="true">@</span>
+                                <input
+                                    type="text"
+                                    id="channel-username"
+                                    class="input-field input-field--prefix"
+                                    placeholder="channelname"
+                                    required
+                                    autofocus
+                                    autocomplete="off"
+                                    spellcheck="false"
+                                    oninput="handleUsernameInput(this)"
+                                >
+                            </div>
+                            <div class="field-feedback" id="username-feedback">
+                                <span>Enter letters, numbers, or underscores (min 5 characters)</span>
+                            </div>
+                        </div>
+
+                        <!-- 2. Member Amount Field -->
+                        <div class="form-group">
+                            <div class="form-label-row">
+                                <label for="member-count" class="form-label">Number of Members</label>
+                                <span style="font-size: 11.5px; color: var(--text-tertiary);">Daily max: 1,000</span>
+                            </div>
+                            <div class="input-wrapper">
+                                <input
+                                    type="number"
+                                    id="member-count"
+                                    class="input-field"
+                                    placeholder="Enter amount (e.g. 500)"
+                                    min="1"
+                                    max="1000"
+                                    inputmode="numeric"
+                                    required
+                                    oninput="handleCountInput(this)"
+                                >
+                            </div>
+                            <!-- Quick Chips -->
+                            <div class="chips-row">
+                                <button type="button" class="chip-btn" onclick="selectChip(100)">+100</button>
+                                <button type="button" class="chip-btn active" onclick="selectChip(300)">300 (Rec)</button>
+                                <button type="button" class="chip-btn" onclick="selectChip(500)">500 (Rec)</button>
+                                <button type="button" class="chip-btn" onclick="selectChip(1000)">1,000 (Max)</button>
+                            </div>
+                            <div class="field-feedback" id="count-feedback">
+                                <span>Recommended: 300–500 per day for best retention</span>
+                            </div>
+                        </div>
+
+                        <!-- 3. Service Type (Visual Segmented Cards) -->
+                        <div class="form-group">
+                            <div class="form-label-row">
+                                <label class="form-label">Service Type</label>
+                            </div>
+
+                            <div class="service-cards" role="radiogroup" aria-label="Service Type">
+                                <!-- Card A: Group Members -->
+                                <div class="service-card selected" id="card-service-members" onclick="selectService('members')" role="radio" aria-checked="true" tabindex="0">
+                                    <div class="service-card__icon">
+                                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+                                    </div>
+                                    <div class="service-card__body">
+                                        <div class="service-card__title">Group Members</div>
+                                        <div class="service-card__desc">Adds real active participants to discussion groups.</div>
+                                    </div>
+                                    <div class="service-card__radio-check" aria-hidden="true"></div>
+                                </div>
+
+                                <!-- Card B: Channel Subscribers -->
+                                <div class="service-card" id="card-service-subscribers" onclick="selectService('subscribers')" role="radio" aria-checked="false" tabindex="0">
+                                    <div class="service-card__icon">
+                                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m3 11 18-5v12L3 13v-2z"/><path d="M11.6 16.8a3 3 0 1 1-5.8-1.6"/></svg>
+                                    </div>
+                                    <div class="service-card__body">
+                                        <div class="service-card__title">Channel Subscribers</div>
+                                        <div class="service-card__desc">Boosts broadcast channel audience and view stats.</div>
+                                    </div>
+                                    <div class="service-card__radio-check" aria-hidden="true"></div>
+                                </div>
+                            </div>
+
+                            <!-- Native hidden select for strict JS backwards compatibility -->
+                            <select id="service-type" aria-hidden="true" tabindex="-1">
+                                <option value="members" selected>Group Members</option>
+                                <option value="subscribers">Channel Subscribers</option>
+                            </select>
+                        </div>
+
+                        <!-- 4. Dynamic Order Summary Box -->
+                        <div class="order-summary" id="live-summary">
+                            <div class="order-summary__title">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>
+                                <span>Order Summary</span>
+                            </div>
+                            <div class="summary-grid">
+                                <div class="summary-item">
+                                    <span class="summary-item__label">Target Channel</span>
+                                    <span class="summary-item__value" id="summary-channel">@—</span>
+                                </div>
+                                <div class="summary-item">
+                                    <span class="summary-item__label">Volume</span>
+                                    <span class="summary-item__value" id="summary-amount">300 members</span>
+                                </div>
+                                <div class="summary-item">
+                                    <span class="summary-item__label">Est. Completion</span>
+                                    <span class="summary-item__value" id="summary-time">~24 Hours</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Alerts / Error messages -->
+                        <div id="form-alert" role="alert" aria-live="polite"></div>
+
+                        <!-- 5. Submit Button -->
+                        <button type="submit" class="btn-submit" id="btn-submit">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
+                            <span id="btn-submit-label">Submit Boost Order</span>
+                        </button>
+                    </form>
+                </div>
+
+                <!-- ════════ RIGHT: HOW IT WORKS STEPPER ════════ -->
+                <div class="card" id="how-it-works-card">
+                    <div class="card-header">
+                        <div class="card-header-icon" aria-hidden="true">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>
+                        </div>
+                        <div class="card-header-text">
+                            <h2 class="card-title">How It Works</h2>
+                            <p class="card-desc">Our automated dispatch connects with official high-retention SMM panels for organic growth.</p>
+                        </div>
+                    </div>
+
+                    <!-- Vertical Stepper -->
+                    <div class="stepper" aria-label="Delivery Steps">
+                        <div class="step-item">
+                            <div class="step-node">1</div>
+                            <div class="step-content">
+                                <div class="step-title">Specify Target Username</div>
+                                <div class="step-desc">Enter your public Telegram group or channel <strong>@username</strong> without spaces.</div>
+                            </div>
+                        </div>
+
+                        <div class="step-item">
+                            <div class="step-node">2</div>
+                            <div class="step-content">
+                                <div class="step-title">Select Member Volume</div>
+                                <div class="step-desc">Choose between 100 to 1,000 members for the current <strong>24-hour cycle</strong>.</div>
+                            </div>
+                        </div>
+
+                        <div class="step-item">
+                            <div class="step-node">3</div>
+                            <div class="step-content">
+                                <div class="step-title">Automated Safe Dispatch</div>
+                                <div class="step-desc">Our queue distributes join requests over time to mirror <strong>organic viral growth</strong>.</div>
+                            </div>
+                        </div>
+
+                        <div class="step-item">
+                            <div class="step-node">4</div>
+                            <div class="step-content">
+                                <div class="step-title">Gradual Delivery</div>
+                                <div class="step-desc">Members appear naturally within 24 hours with zero risk to account standing.</div>
+                            </div>
+                        </div>
+
+                        <div class="step-item">
+                            <div class="step-node">5</div>
+                            <div class="step-content">
+                                <div class="step-title">Daily Renewal</div>
+                                <div class="step-desc">Place your next order after 24h to continue compounding your subscriber base.</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Pro Tip Box -->
+                    <div class="protip-card">
+                        <div class="protip-icon" aria-hidden="true">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 14c.2-1 .7-1.7 1.5-2.5 1-.9 1.5-2.2 1.5-3.5A6 6 0 0 0 6 8c0 1 .2 2.2 1.5 3.5.7.7 1.3 1.5 1.5 2.5"/><path d="M9 18h6"/><path d="M10 22h4"/></svg>
+                        </div>
+                        <div class="protip-text">
+                            <strong>Growth Pro Tip:</strong> Daily batches of <strong>300–500 members</strong> result in 40% higher retention rates than single 1,000-member bursts.
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ── Waiting / Processing Screen (Shown after order placement) ── -->
+            <div class="waiting-card-wrapper hidden" id="waiting-card">
+                <div class="card card-full">
+                    <div class="waiting-screen">
+                        <div class="waiting-badge">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+                            <span>Order Dispatched</span>
+                        </div>
+
+                        <div class="waiting-icon-pulse" aria-hidden="true">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+                        </div>
+
+                        <h2 class="waiting-title">Order Processing in Progress</h2>
+                        <p class="waiting-desc">
+                            Your Telegram boost request is actively being fulfilled. New members are joining your group/channel via safe drip delivery over the next 24 hours.
+                        </p>
+
+                        <!-- Order detail metadata -->
+                        <div class="order-detail-card">
+                            <div class="order-row">
+                                <span class="order-label">Target Channel</span>
+                                <span class="order-val" id="order-channel">—</span>
+                            </div>
+                            <div class="order-row">
+                                <span class="order-label">Member Volume</span>
+                                <span class="order-val" id="order-members">—</span>
+                            </div>
+                            <div class="order-row">
+                                <span class="order-label">Service Category</span>
+                                <span class="order-val" id="order-service">—</span>
+                            </div>
+                            <div class="order-row">
+                                <span class="order-label">Processing Status</span>
+                                <span class="order-val" style="color: var(--amber-400); display: flex; align-items: center; gap: 6px;">
+                                    <span class="status-dot" style="background: var(--amber-400); box-shadow: 0 0 8px var(--amber-400);"></span>
+                                    <span>Active Drip Delivery</span>
+                                </span>
+                            </div>
+                            <div class="order-row">
+                                <span class="order-label">Order Submitted</span>
+                                <span class="order-val" id="order-time">—</span>
+                            </div>
+                        </div>
+
+                        <!-- Progress indicator -->
+                        <div class="progress-bar-container" aria-label="Order Progress">
+                            <div class="progress-bar-fill" id="progress-fill" style="width: 12%;"></div>
+                        </div>
+                        <div class="progress-caption">Automated gradual drip feed in progress to ensure account safety...</div>
+
+                        <!-- Live Countdown Timer -->
+                        <div class="countdown-container">
+                            <div class="countdown-label">Estimated Delivery Window</div>
+                            <div class="countdown-digits">
+                                <div class="countdown-unit">
+                                    <div class="countdown-num" id="cd-hours">23</div>
+                                    <div class="countdown-lbl">Hours</div>
+                                </div>
+                                <span class="countdown-sep" aria-hidden="true">:</span>
+                                <div class="countdown-unit">
+                                    <div class="countdown-num" id="cd-minutes">59</div>
+                                    <div class="countdown-lbl">Minutes</div>
+                                </div>
+                                <span class="countdown-sep" aria-hidden="true">:</span>
+                                <div class="countdown-unit">
+                                    <div class="countdown-num" id="cd-seconds">59</div>
+                                    <div class="countdown-lbl">Seconds</div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <button type="button" class="btn-new" onclick="resetDashboard()">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/></svg>
+                            <span>Back to Order Form</span>
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ── Recent Orders Table Section ── -->
+            <section class="orders-section">
+                <div class="orders-card">
+                    <div class="orders-header">
+                        <div class="orders-title-group">
+                            <div class="orders-title-icon" aria-hidden="true">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4Z"/><path d="M3 6h18"/><path d="M16 10a4 4 0 0 1-8 0"/></svg>
+                            </div>
+                            <h2 class="orders-title">Recent Boost Orders</h2>
+                            <span class="orders-count-badge" id="orders-count">0 Orders</span>
+                        </div>
+                    </div>
+
+                    <div class="table-responsive">
+                        <table class="orders-table" id="orders-table">
+                            <thead>
+                                <tr>
+                                    <th>Order ID</th>
+                                    <th>Target Channel</th>
+                                    <th>Service</th>
+                                    <th>Quantity</th>
+                                    <th>Status</th>
+                                    <th>Date Placed</th>
+                                </tr>
+                            </thead>
+                            <tbody id="orders-tbody">
+                                <!-- Populated dynamically by JS -->
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <!-- Empty state view -->
+                    <div class="empty-orders hidden" id="empty-orders-view">
+                        <div class="empty-orders__icon" aria-hidden="true">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="8" y1="12" x2="16" y2="12"/></svg>
+                        </div>
+                        <div class="empty-orders__title">No Orders Placed Yet</div>
+                        <div class="empty-orders__desc">Your submitted Telegram group and channel member orders will appear here with live tracking.</div>
+                    </div>
+                </div>
+            </section>
+        </main>
+
+        <!-- ── Toast Notifications Container ── -->
+        <div class="toast-container" id="toast-container" aria-live="assertive"></div>
+
+        <!-- ── Modern SaaS Footer ── -->
+        <footer class="footer">
+            <div class="container">
+                <div class="footer-inner">
+                    <div class="footer-copy">TeleBoost &copy; 2026 &bull; SMM Member Automation Platform</div>
+                    <ul class="footer-links">
+                        <li><a href="#terms">Terms</a></li>
+                        <li><a href="#privacy">Privacy</a></li>
+                        <li><a href="#support">Support</a></li>
+                    </ul>
+                </div>
+            </div>
+        </footer>
+    </div>
+
+    <!-- ================================================================
+       DASHBOARD SCRIPT LOGIC
+       ================================================================ -->
+    <script>
+        // 1. User Session Initialization
+        const userInfo = JSON.parse(sessionStorage.getItem('tg_user') || '{}');
+        if (userInfo.name) {
+            const shortName = userInfo.name.split(' ')[0];
+            document.getElementById('nav-name').textContent = shortName;
+            document.getElementById('dropdown-username').textContent = userInfo.name;
+            document.getElementById('nav-avatar').textContent = (userInfo.name[0] || 'T').toUpperCase();
+        }
+        if (userInfo.phone) {
+            document.getElementById('dropdown-phone').textContent = userInfo.phone;
+        }
+
+        // 2. Dropdown Toggle
+        function toggleUserDropdown(e) {
+            e.stopPropagation();
+            const btn = document.getElementById('user-menu-btn');
+            const dropdown = document.getElementById('user-dropdown');
+            const isOpen = dropdown.classList.contains('show');
+
+            if (isOpen) {
+                dropdown.classList.remove('show');
+                btn.setAttribute('aria-expanded', 'false');
+            } else {
+                dropdown.classList.add('show');
+                btn.setAttribute('aria-expanded', 'true');
+            }
+        }
+
+        document.addEventListener('click', (e) => {
+            const dropdown = document.getElementById('user-dropdown');
+            const btn = document.getElementById('user-menu-btn');
+            if (dropdown && !dropdown.contains(e.target) && !btn.contains(e.target)) {
+                dropdown.classList.remove('show');
+                btn.setAttribute('aria-expanded', 'false');
+            }
+        });
+
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape') {
+                const dropdown = document.getElementById('user-dropdown');
+                const btn = document.getElementById('user-menu-btn');
+                if (dropdown) dropdown.classList.remove('show');
+                if (btn) btn.setAttribute('aria-expanded', 'false');
+            }
+        });
+
+        function handleSignOut(e) {
+            e.preventDefault();
+            sessionStorage.removeItem('tg_user');
+            window.location.href = '/';
+        }
+
+        function dismissBanner() {
+            const banner = document.getElementById('quota-banner');
+            if (banner) {
+                banner.style.opacity = '0';
+                banner.style.transform = 'translateY(-6px)';
+                setTimeout(() => { banner.style.display = 'none'; }, 200);
+            }
+        }
+
+        // 3. Service Selection Logic
+        function selectService(type) {
+            const cardMembers = document.getElementById('card-service-members');
+            const cardSubscribers = document.getElementById('card-service-subscribers');
+            const selectEl = document.getElementById('service-type');
+
+            if (type === 'members') {
+                cardMembers.classList.add('selected');
+                cardMembers.setAttribute('aria-checked', 'true');
+                cardSubscribers.classList.remove('selected');
+                cardSubscribers.setAttribute('aria-checked', 'false');
+                selectEl.value = 'members';
+            } else {
+                cardSubscribers.classList.add('selected');
+                cardSubscribers.setAttribute('aria-checked', 'true');
+                cardMembers.classList.remove('selected');
+                cardMembers.setAttribute('aria-checked', 'false');
+                selectEl.value = 'subscribers';
+            }
+            updateSummary();
+        }
+
+        // 4. Quick Chip Selection
+        function selectChip(amount) {
+            const input = document.getElementById('member-count');
+            input.value = amount;
+            document.querySelectorAll('.chip-btn').forEach(btn => {
+                const text = btn.textContent.replace(/\D/g, '');
+                btn.classList.toggle('active', parseInt(text) === amount);
+            });
+            handleCountInput(input);
+        }
+
+        // 5. Live Inline Validation & Summary Updates
+        function handleUsernameInput(el) {
+            let val = el.value.trim().replace(/^@/, '');
+            const feedback = document.getElementById('username-feedback');
+
+            if (!val) {
+                feedback.innerHTML = '<span>Enter letters, numbers, or underscores (min 5 characters)</span>';
+                feedback.className = 'field-feedback';
+                el.classList.remove('is-invalid');
+            } else if (val.length < 5) {
+                feedback.innerHTML = '<span class="field-feedback--warning">Username is too short (min 5 characters)</span>';
+                feedback.className = 'field-feedback field-feedback--warning';
+                el.classList.remove('is-invalid');
+            } else if (!/^[a-zA-Z0-9_]{5,32}$/.test(val)) {
+                feedback.innerHTML = '<span class="field-feedback--error">Only letters, numbers, and underscores allowed</span>';
+                feedback.className = 'field-feedback field-feedback--error';
+                el.classList.add('is-invalid');
+            } else {
+                feedback.innerHTML = '<span style="color: var(--accent-400);">✓ Valid Telegram username</span>';
+                feedback.className = 'field-feedback';
+                el.classList.remove('is-invalid');
+            }
+            updateSummary();
+        }
+
+        function handleCountInput(el) {
+            const count = parseInt(el.value);
+            const feedback = document.getElementById('count-feedback');
+
+            // Synchronize chips
+            document.querySelectorAll('.chip-btn').forEach(btn => {
+                const text = btn.textContent.replace(/\D/g, '');
+                btn.classList.toggle('active', parseInt(text) === count);
+            });
+
+            if (!count || count <= 0) {
+                feedback.innerHTML = '<span>Recommended: 300–500 per day for best retention</span>';
+                feedback.className = 'field-feedback';
+                el.classList.remove('is-invalid');
+            } else if (count > 1000) {
+                const days = Math.ceil(count / 1000);
+                feedback.innerHTML = `<span class="field-feedback--warning">⚡ Exceeds daily cap: will automatically drip over ${days} consecutive days.</span>`;
+                feedback.className = 'field-feedback field-feedback--warning';
+                el.classList.remove('is-invalid');
+            } else {
+                feedback.innerHTML = '<span>Recommended: 300–500 per day for best retention</span>';
+                feedback.className = 'field-feedback';
+                el.classList.remove('is-invalid');
+            }
+            updateSummary();
+        }
+
+        function updateSummary() {
+            const username = document.getElementById('channel-username').value.trim().replace(/^@/, '');
+            const count = parseInt(document.getElementById('member-count').value) || 300;
+            const channelSummary = document.getElementById('summary-channel');
+            const amountSummary = document.getElementById('summary-amount');
+            const timeSummary = document.getElementById('summary-time');
+
+            channelSummary.textContent = username ? '@' + username : '@—';
+            amountSummary.textContent = count.toLocaleString() + ' members';
+
+            if (count > 1000) {
+                const days = Math.ceil(count / 1000);
+                timeSummary.textContent = `~${days * 24}h (${days} Days)`;
+            } else {
+                timeSummary.textContent = '~24 Hours';
+            }
+        }
+
+        // Initialize default count
+        document.getElementById('member-count').value = 300;
+        updateSummary();
+
+        // 6. Countdown Timer & Progress Management
+        let countdownInterval = null;
+        let targetTime = null;
+
+        function startCountdown() {
+            targetTime = Date.now() + (24 * 60 * 60 * 1000);
+            localStorage.setItem('teleboost_target', targetTime.toString());
+            updateCountdown();
+            if (countdownInterval) clearInterval(countdownInterval);
+            countdownInterval = setInterval(updateCountdown, 1000);
+            animateProgress();
+        }
+
+        function updateCountdown() {
+            const now = Date.now();
+            const diff = Math.max(0, targetTime - now);
+            const hours = Math.floor(diff / (1000 * 60 * 60));
+            const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
+            const seconds = Math.floor((diff % (1000 * 60)) / 1000);
+
+            const hEl = document.getElementById('cd-hours');
+            const mEl = document.getElementById('cd-minutes');
+            const sEl = document.getElementById('cd-seconds');
+
+            if (hEl) hEl.textContent = String(hours).padStart(2, '0');
+            if (mEl) mEl.textContent = String(minutes).padStart(2, '0');
+            if (sEl) sEl.textContent = String(seconds).padStart(2, '0');
+
+            if (diff <= 0 && countdownInterval) {
+                clearInterval(countdownInterval);
+                if (hEl) hEl.textContent = '00';
+                if (mEl) mEl.textContent = '00';
+                if (sEl) sEl.textContent = '00';
+            }
+        }
+
+        function animateProgress() {
+            const fill = document.getElementById('progress-fill');
+            if (!fill) return;
+            let pct = 12;
+            const progressInterval = setInterval(() => {
+                pct += Math.random() * 0.4;
+                if (pct > 24) { clearInterval(progressInterval); }
+                fill.style.width = pct + '%';
+            }, 2500);
+        }
+
+        // 7. Toast Notification Utility
+        function showToast(msg, type = 'success') {
+            const container = document.getElementById('toast-container');
+            const toast = document.createElement('div');
+            toast.className = `toast toast--${type}`;
+
+            const iconSvg = type === 'success'
+                ? '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>'
+                : '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>';
+
+            toast.innerHTML = `${iconSvg}<span>${msg}</span>`;
+            container.appendChild(toast);
+
+            setTimeout(() => {
+                toast.style.opacity = '0';
+                toast.style.transform = 'translateY(-10px)';
+                toast.style.transition = 'all 0.3s ease';
+                setTimeout(() => toast.remove(), 300);
+            }, 3800);
+        }
+
+        function showFormAlert(msg, type = 'error') {
+            const box = document.getElementById('form-alert');
+            box.innerHTML = `<div class="alert alert-${type}">${msg}</div>`;
+            setTimeout(() => { box.innerHTML = ''; }, 4500);
+            showToast(msg, type);
+        }
+
+        // 8. Order Submission Handler
+        function handleSubmitOrder(e) {
+            e.preventDefault();
+
+            const usernameInput = document.getElementById('channel-username');
+            const countInput = document.getElementById('member-count');
+            const serviceEl = document.getElementById('service-type');
+            const btnSubmit = document.getElementById('btn-submit');
+            const btnLabel = document.getElementById('btn-submit-label');
+
+            const username = usernameInput.value.trim().replace(/^@/, '');
+            const count = parseInt(countInput.value);
+            const serviceVal = serviceEl.value;
+            const serviceText = serviceVal === 'members' ? 'Group Members' : 'Channel Subscribers';
+
+            // Validation
+            if (!username) {
+                showFormAlert('Please specify a Telegram channel or group username.', 'error');
+                usernameInput.focus();
+                return;
+            }
+            if (username.length < 5) {
+                showFormAlert('Username must be at least 5 characters long.', 'error');
+                usernameInput.focus();
+                return;
+            }
+            if (!count || count < 1) {
+                showFormAlert('Please enter a valid member quantity (at least 1).', 'error');
+                countInput.focus();
+                return;
+            }
+
+            // Button loading state
+            btnSubmit.disabled = true;
+            btnSubmit.innerHTML = '<span class="btn-spinner"></span><span>Scheduling Boost Order...</span>';
+
+            setTimeout(() => {
+                const now = new Date();
+                const timeStr = now.toLocaleString('en-US', {
+                    month: 'short', day: 'numeric', year: 'numeric',
+                    hour: '2-digit', minute: '2-digit'
+                });
+
+                const orderId = 'TB-' + Math.floor(10000 + Math.random() * 90000);
+
+                // Populate active waiting screen
+                document.getElementById('order-channel').textContent = '@' + username;
+                document.getElementById('order-members').textContent = count.toLocaleString() + ' members';
+                document.getElementById('order-service').textContent = serviceText;
+                document.getElementById('order-time').textContent = timeStr;
+
+                // Active order object
+                const activeOrder = {
+                    id: orderId,
+                    channel: username,
+                    count: count,
+                    service: serviceVal,
+                    serviceText: serviceText,
+                    time: now.toISOString(),
+                    timeFormatted: timeStr,
+                    targetTime: Date.now() + (24 * 60 * 60 * 1000),
+                    status: 'Processing'
+                };
+
+                // Save to localStorage
+                localStorage.setItem('teleboost_order', JSON.stringify(activeOrder));
+
+                // Save to order history list
+                saveOrderToHistory(activeOrder);
+
+                // Switch views
+                document.getElementById('main-content').classList.add('hidden');
+                document.getElementById('waiting-card').classList.remove('hidden');
+
+                // Restore button
+                btnSubmit.disabled = false;
+                btnSubmit.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg><span id="btn-submit-label">Submit Boost Order</span>';
+
+                startCountdown();
+                renderOrdersTable();
+                showToast(`Order for @${username} submitted successfully!`, 'success');
+            }, 600);
+        }
+
+        // 9. Order History Persistence
+        function getOrderHistory() {
+            try {
+                return JSON.parse(localStorage.getItem('teleboost_history') || '[]');
+            } catch (e) {
+                return [];
+            }
+        }
+
+        function saveOrderToHistory(order) {
+            let history = getOrderHistory();
+            // Prepend new order
+            history.unshift(order);
+            if (history.length > 20) history = history.slice(0, 20);
+            localStorage.setItem('teleboost_history', JSON.stringify(history));
+        }
+
+        function renderOrdersTable() {
+            const tbody = document.getElementById('orders-tbody');
+            const emptyView = document.getElementById('empty-orders-view');
+            const countBadge = document.getElementById('orders-count');
+            const history = getOrderHistory();
+
+            if (!history || history.length === 0) {
+                tbody.innerHTML = '';
+                emptyView.classList.remove('hidden');
+                countBadge.textContent = '0 Orders';
+                return;
+            }
+
+            emptyView.classList.add('hidden');
+            countBadge.textContent = `${history.length} Order${history.length > 1 ? 's' : ''}`;
+
+            tbody.innerHTML = history.map(o => {
+                const isProcessing = (o.targetTime && o.targetTime > Date.now()) || o.status === 'Processing';
+                const statusBadge = isProcessing
+                    ? '<span class="status-pill status-pill--processing"><span class="dot"></span>Processing</span>'
+                    : '<span class="status-pill status-pill--completed"><span class="dot"></span>Completed</span>';
+
+                return `
+                    <tr>
+                        <td data-label="Order ID"><span class="order-id">#${o.id || 'TB-9281'}</span></td>
+                        <td data-label="Channel"><span class="order-channel-tag">@${o.channel}</span></td>
+                        <td data-label="Service">${o.serviceText || (o.service === 'members' ? 'Group Members' : 'Channel Subscribers')}</td>
+                        <td data-label="Quantity"><strong>${o.count ? o.count.toLocaleString() : '500'}</strong> members</td>
+                        <td data-label="Status">${statusBadge}</td>
+                        <td data-label="Date">${o.timeFormatted || 'Today'}</td>
+                    </tr>
+                `;
+            }).join('');
+        }
+
+        // 10. Check Existing Active Order on Load
+        function checkExistingOrder() {
+            const stored = localStorage.getItem('teleboost_order');
+            if (stored) {
+                try {
+                    const order = JSON.parse(stored);
+                    const remaining = order.targetTime - Date.now();
+                    if (remaining > 0) {
+                        const serviceLabel = order.serviceText || (order.service === 'members' ? 'Group Members' : 'Channel Subscribers');
+                        document.getElementById('order-channel').textContent = '@' + order.channel;
+                        document.getElementById('order-members').textContent = order.count.toLocaleString() + ' members';
+                        document.getElementById('order-service').textContent = serviceLabel;
+                        document.getElementById('order-time').textContent = order.timeFormatted || new Date(order.time).toLocaleString();
+
+                        document.getElementById('main-content').classList.add('hidden');
+                        document.getElementById('waiting-card').classList.remove('hidden');
+
+                        targetTime = order.targetTime;
+                        updateCountdown();
+                        countdownInterval = setInterval(updateCountdown, 1000);
+                        animateProgress();
+                    } else {
+                        localStorage.removeItem('teleboost_order');
+                    }
+                } catch (err) {
+                    localStorage.removeItem('teleboost_order');
+                }
+            }
+            renderOrdersTable();
+        }
+
+        function resetDashboard() {
+            localStorage.removeItem('teleboost_order');
+            if (countdownInterval) clearInterval(countdownInterval);
+            document.getElementById('waiting-card').classList.add('hidden');
+            document.getElementById('main-content').classList.remove('hidden');
+            document.getElementById('boost-form').reset();
+            document.getElementById('member-count').value = 300;
+            selectService('members');
+            updateSummary();
+            renderOrdersTable();
+        }
+
+        function refreshDashboardData() {
+            showToast('Dashboard metrics refreshed', 'success');
+            renderOrdersTable();
+        }
+
+        // Initialize on page load
+        checkExistingOrder();
+    </script>
+</body>
+</html>

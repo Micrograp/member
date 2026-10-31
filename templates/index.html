@@ -1,0 +1,1387 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TeleBoost — Telegram Member Increaser</title>
+    <meta name="description" content="Grow your Telegram groups and channels with real members. Automated, safe, up to 1,000 members per day.">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <style>
+        /* ================================================================
+           DESIGN TOKENS
+           ================================================================ */
+        :root {
+            /* Colors */
+            --bg:           #07080d;
+            --surface:      #0f111a;
+            --surface-alt:  #141722;
+            --border:       rgba(255, 255, 255, 0.08);
+            --border-hover: rgba(255, 255, 255, 0.14);
+
+            /* Primary: indigo-to-violet */
+            --primary-400:  #818cf8;
+            --primary-500:  #6366f1;
+            --primary-600:  #4f46e5;
+            --primary-glow: rgba(99, 102, 241, 0.30);
+            --primary-gradient: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%);
+
+            /* Accent: teal/emerald */
+            --accent-400:   #34d399;
+            --accent-500:   #10b981;
+            --accent-glow:  rgba(16, 185, 129, 0.20);
+
+            /* Semantic */
+            --success:      #10b981;
+            --warning:      #f59e0b;
+            --error:        #ef4444;
+            --error-bg:     rgba(239, 68, 68, 0.10);
+            --error-border: rgba(239, 68, 68, 0.25);
+
+            /* Text */
+            --text-primary:   #f1f5f9;
+            --text-secondary: #94a3b8;
+            --text-tertiary:  #64748b;
+            --text-dim:       #475569;
+
+            /* Spacing & sizing */
+            --radius-sm:   8px;
+            --radius-md:   12px;
+            --radius-lg:   16px;
+            --radius-xl:   20px;
+            --radius-2xl:  24px;
+
+            /* Shadows */
+            --shadow-card: 0 20px 50px -12px rgba(0, 0, 0, 0.50),
+                           0 0 0 1px rgba(255, 255, 255, 0.04) inset;
+            --shadow-glow: 0 0 40px -10px var(--primary-glow);
+
+            /* Transitions */
+            --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+            --duration: 200ms;
+        }
+
+        /* ================================================================
+           RESET & BASE
+           ================================================================ */
+        *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            background: var(--bg);
+            color: var(--text-secondary);
+            min-height: 100vh;
+            -webkit-font-smoothing: antialiased;
+            -moz-osx-font-smoothing: grayscale;
+            overflow-x: hidden;
+        }
+
+        /* ================================================================
+           BACKGROUND EFFECTS
+           ================================================================ */
+        .bg-effects { position: fixed; inset: 0; z-index: 0; pointer-events: none; overflow: hidden; }
+
+        /* Mesh gradient */
+        .bg-mesh {
+            position: absolute; inset: 0;
+            background:
+                radial-gradient(ellipse 60% 50% at 15% 20%, rgba(99, 102, 241, 0.10) 0%, transparent 60%),
+                radial-gradient(ellipse 50% 60% at 85% 30%, rgba(139, 92, 246, 0.07) 0%, transparent 50%),
+                radial-gradient(ellipse 50% 40% at 50% 90%, rgba(16, 185, 129, 0.05) 0%, transparent 50%);
+        }
+
+        /* Dot grid */
+        .bg-grid {
+            position: absolute; inset: 0;
+            background-image: radial-gradient(rgba(255,255,255,0.03) 1px, transparent 1px);
+            background-size: 32px 32px;
+            mask-image: radial-gradient(ellipse 70% 60% at 50% 40%, black 30%, transparent 80%);
+            -webkit-mask-image: radial-gradient(ellipse 70% 60% at 50% 40%, black 30%, transparent 80%);
+        }
+
+        /* Animated glows */
+        .bg-glow {
+            position: absolute;
+            border-radius: 50%;
+            filter: blur(100px);
+            animation: glowDrift 20s ease-in-out infinite alternate;
+        }
+        .bg-glow--1 {
+            width: 500px; height: 500px;
+            background: rgba(99, 102, 241, 0.12);
+            top: -10%; left: -5%;
+        }
+        .bg-glow--2 {
+            width: 400px; height: 400px;
+            background: rgba(139, 92, 246, 0.08);
+            bottom: -10%; right: -5%;
+            animation-delay: -10s;
+        }
+        @keyframes glowDrift {
+            0%   { transform: translate(0, 0) scale(1); }
+            100% { transform: translate(40px, -30px) scale(1.15); }
+        }
+
+        @media (prefers-reduced-motion: reduce) {
+            .bg-glow { animation: none; }
+            .hero, .card-wrapper { animation: none !important; }
+        }
+
+        /* ================================================================
+           LAYOUT
+           ================================================================ */
+        .page { position: relative; z-index: 1; min-height: 100vh; display: flex; flex-direction: column; }
+
+        .container {
+            width: 100%; max-width: 1200px;
+            margin: 0 auto;
+            padding: 0 24px;
+        }
+
+        .layout {
+            display: grid;
+            grid-template-columns: 1fr 440px;
+            gap: 72px;
+            align-items: center;
+            min-height: 100vh;
+            padding: 48px 0;
+        }
+
+        /* ================================================================
+           HERO — LEFT COLUMN
+           ================================================================ */
+        .hero {
+            animation: fadeSlideUp 0.7s var(--ease-out) both;
+            animation-delay: 0.1s;
+        }
+        @keyframes fadeSlideUp {
+            from { opacity: 0; transform: translateY(24px); }
+            to   { opacity: 1; transform: translateY(0); }
+        }
+
+        .hero__badge {
+            display: inline-flex; align-items: center; gap: 8px;
+            background: rgba(99, 102, 241, 0.08);
+            border: 1px solid rgba(99, 102, 241, 0.18);
+            border-radius: 100px;
+            padding: 6px 16px;
+            font-size: 12px; font-weight: 600;
+            color: var(--primary-400);
+            letter-spacing: 0.06em;
+            text-transform: uppercase;
+            margin-bottom: 28px;
+        }
+        .hero__badge-dot {
+            width: 6px; height: 6px;
+            border-radius: 50%;
+            background: var(--accent-400);
+            animation: blink 1.6s ease-in-out infinite;
+        }
+        @keyframes blink { 0%, 100% { opacity: 1; } 50% { opacity: 0.3; } }
+
+        .hero__title {
+            font-size: clamp(36px, 5vw, 58px);
+            font-weight: 800;
+            line-height: 1.08;
+            letter-spacing: -0.03em;
+            color: var(--text-primary);
+            margin-bottom: 20px;
+        }
+        .gradient-text {
+            background: linear-gradient(135deg, var(--primary-400) 0%, #a78bfa 40%, var(--accent-400) 100%);
+            -webkit-background-clip: text; background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .hero__subtitle {
+            font-size: 17px;
+            line-height: 1.65;
+            color: var(--text-secondary);
+            max-width: 480px;
+            margin-bottom: 40px;
+        }
+
+        /* ── Feature cards ── */
+        .features { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 40px; }
+
+        .feature-card {
+            display: flex; align-items: flex-start; gap: 12px;
+            background: rgba(255, 255, 255, 0.025);
+            border: 1px solid var(--border);
+            border-radius: var(--radius-md);
+            padding: 16px;
+            transition: all var(--duration) ease;
+        }
+        .feature-card:hover {
+            background: rgba(255, 255, 255, 0.04);
+            border-color: var(--border-hover);
+            transform: translateY(-1px);
+        }
+        .feature-card__icon {
+            width: 36px; height: 36px; min-width: 36px;
+            display: flex; align-items: center; justify-content: center;
+            background: rgba(99, 102, 241, 0.10);
+            border-radius: var(--radius-sm);
+            color: var(--primary-400);
+        }
+        .feature-card__icon svg { width: 18px; height: 18px; }
+        .feature-card__text h3 {
+            font-size: 13px; font-weight: 600;
+            color: var(--text-primary);
+            margin-bottom: 2px;
+        }
+        .feature-card__text p {
+            font-size: 12px; line-height: 1.5;
+            color: var(--text-tertiary);
+        }
+
+        /* ── Social proof ── */
+        .social-proof {
+            display: flex; align-items: center; gap: 16px;
+            padding-top: 8px;
+        }
+        .avatar-stack { display: flex; }
+        .avatar-stack__item {
+            width: 32px; height: 32px;
+            border-radius: 50%;
+            border: 2px solid var(--bg);
+            display: flex; align-items: center; justify-content: center;
+            font-size: 11px; font-weight: 700; color: white;
+            margin-left: -8px;
+        }
+        .avatar-stack__item:first-child { margin-left: 0; }
+        .avatar-stack__item--1 { background: linear-gradient(135deg, #6366f1, #8b5cf6); }
+        .avatar-stack__item--2 { background: linear-gradient(135deg, #8b5cf6, #a78bfa); }
+        .avatar-stack__item--3 { background: linear-gradient(135deg, #10b981, #34d399); }
+        .avatar-stack__item--4 { background: linear-gradient(135deg, #f59e0b, #fbbf24); }
+        .avatar-stack__item--more {
+            background: var(--surface-alt);
+            color: var(--text-tertiary);
+            font-size: 10px;
+        }
+
+        .social-proof__info { font-size: 13px; }
+        .social-proof__stars { display: flex; gap: 2px; margin-bottom: 2px; }
+        .social-proof__stars svg { width: 14px; height: 14px; color: #fbbf24; fill: #fbbf24; }
+        .social-proof__text { color: var(--text-tertiary); font-size: 12px; }
+        .social-proof__text strong { color: var(--text-secondary); }
+
+        /* ================================================================
+           AUTH CARD — RIGHT COLUMN
+           ================================================================ */
+        .card-wrapper {
+            animation: fadeSlideUp 0.7s var(--ease-out) both;
+            animation-delay: 0.3s;
+        }
+
+        .card {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: var(--radius-2xl);
+            padding: 36px 32px 28px;
+            box-shadow: var(--shadow-card);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            position: relative;
+            overflow: hidden;
+        }
+        /* Top accent line */
+        .card::before {
+            content: '';
+            position: absolute; top: 0; left: 32px; right: 32px; height: 1px;
+            background: linear-gradient(90deg, transparent, rgba(99,102,241,0.35), rgba(139,92,246,0.20), transparent);
+        }
+
+        .card__icon {
+            width: 44px; height: 44px;
+            display: flex; align-items: center; justify-content: center;
+            background: rgba(99, 102, 241, 0.10);
+            border: 1px solid rgba(99, 102, 241, 0.15);
+            border-radius: var(--radius-md);
+            color: var(--primary-400);
+            margin-bottom: 20px;
+        }
+        .card__icon svg { width: 20px; height: 20px; }
+
+        .card__title {
+            font-size: 20px; font-weight: 700;
+            color: var(--text-primary);
+            margin-bottom: 6px;
+            letter-spacing: -0.01em;
+        }
+        .card__subtitle {
+            font-size: 14px; line-height: 1.5;
+            color: var(--text-tertiary);
+            margin-bottom: 24px;
+        }
+
+        /* ================================================================
+           FORM ELEMENTS
+           ================================================================ */
+        .form-group { margin-bottom: 20px; }
+
+        .form-label {
+            display: block;
+            font-size: 13px; font-weight: 600;
+            color: var(--text-secondary);
+            margin-bottom: 8px;
+        }
+
+        /* Phone input with country code */
+        .phone-row {
+            display: flex;
+            gap: 8px;
+            align-items: stretch;
+            width: 100%;
+        }
+
+        .country-select-wrapper {
+            position: relative;
+            flex: 0 0 108px;
+            min-width: 98px;
+        }
+        .country-select {
+            width: 100%;
+            height: 48px;
+            padding: 0 24px 0 10px;
+            background: rgba(255, 255, 255, 0.03);
+            border: 1px solid var(--border);
+            border-radius: var(--radius-md);
+            color: var(--text-primary);
+            font-family: inherit;
+            font-size: 15px;
+            font-weight: 500;
+            cursor: pointer;
+            appearance: none;
+            -webkit-appearance: none;
+            outline: none;
+            transition: border-color var(--duration) ease, box-shadow var(--duration) ease;
+        }
+        .country-select:focus {
+            border-color: var(--primary-500);
+            box-shadow: 0 0 0 3px var(--primary-glow);
+        }
+        .country-select option {
+            background: var(--surface);
+            color: var(--text-primary);
+            padding: 8px;
+        }
+        .country-chevron {
+            position: absolute; right: 8px; top: 50%; transform: translateY(-50%);
+            pointer-events: none;
+            color: var(--text-dim);
+        }
+        .country-chevron svg { width: 14px; height: 14px; }
+
+        .input-field {
+            flex: 1;
+            min-width: 0;
+            width: 100%;
+            height: 48px;
+            padding: 0 16px;
+            background: rgba(255, 255, 255, 0.03);
+            border: 1px solid var(--border);
+            border-radius: var(--radius-md);
+            color: var(--text-primary);
+            font-family: inherit;
+            font-size: 16px; /* 16px prevents iOS Safari auto-zoom */
+            font-weight: 500;
+            outline: none;
+            transition: border-color var(--duration) ease, box-shadow var(--duration) ease;
+        }
+        .input-field::placeholder { color: var(--text-dim); font-weight: 400; }
+        .input-field:focus {
+            border-color: var(--primary-500);
+            box-shadow: 0 0 0 3px var(--primary-glow);
+        }
+        .input-field--error { border-color: var(--error); }
+        .input-field--error:focus { box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.20); }
+
+        /* OTP Boxes - fluid flex sizing */
+        .otp-row {
+            display: flex;
+            gap: 8px;
+            justify-content: center;
+            width: 100%;
+        }
+        .otp-box {
+            flex: 1;
+            max-width: 54px;
+            min-width: 0;
+            height: 54px;
+            text-align: center;
+            font-size: 22px;
+            font-weight: 700;
+            letter-spacing: 0;
+            background: rgba(255, 255, 255, 0.03);
+            border: 1px solid var(--border);
+            border-radius: var(--radius-md);
+            color: var(--text-primary);
+            font-family: inherit;
+            outline: none;
+            transition: all var(--duration) ease;
+            caret-color: var(--primary-400);
+        }
+        .otp-box:focus {
+            border-color: var(--primary-500);
+            box-shadow: 0 0 0 3px var(--primary-glow);
+            background: rgba(99, 102, 241, 0.04);
+        }
+        .otp-box.filled {
+            border-color: var(--primary-400);
+            background: rgba(99, 102, 241, 0.06);
+        }
+
+        /* Password field */
+        .password-wrapper { position: relative; }
+        .password-wrapper .input-field { padding-right: 48px; }
+        .password-toggle {
+            position: absolute; right: 4px; top: 50%; transform: translateY(-50%);
+            width: 40px; height: 40px;
+            display: flex; align-items: center; justify-content: center;
+            background: none; border: none;
+            color: var(--text-dim);
+            cursor: pointer;
+            border-radius: var(--radius-sm);
+            transition: color var(--duration) ease;
+        }
+        .password-toggle:hover { color: var(--text-secondary); }
+        .password-toggle svg { width: 18px; height: 18px; }
+
+        /* Buttons */
+        .btn-primary {
+            width: 100%;
+            height: 48px;
+            display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+            background: var(--primary-gradient);
+            color: white;
+            border: none;
+            border-radius: var(--radius-md);
+            font-family: inherit;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all var(--duration) ease;
+            position: relative;
+            overflow: hidden;
+        }
+        .btn-primary:hover {
+            box-shadow: var(--shadow-glow);
+            transform: translateY(-1px);
+        }
+        .btn-primary:active { transform: translateY(0); }
+        .btn-primary:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            transform: none;
+            box-shadow: none;
+        }
+        .btn-primary svg { width: 16px; height: 16px; }
+
+        /* Button shimmer */
+        .btn-primary::after {
+            content: '';
+            position: absolute; inset: 0;
+            background: linear-gradient(90deg, transparent 0%, rgba(255,255,255,0.08) 50%, transparent 100%);
+            transform: translateX(-100%);
+            transition: transform 0.6s ease;
+        }
+        .btn-primary:hover::after { transform: translateX(100%); }
+
+        /* Loading spinner inside button */
+        .btn-spinner {
+            width: 18px; height: 18px;
+            border: 2px solid rgba(255, 255, 255, 0.25);
+            border-top-color: white;
+            border-radius: 50%;
+            animation: spin 0.65s linear infinite;
+        }
+        @keyframes spin { to { transform: rotate(360deg); } }
+
+        /* ── Alerts ── */
+        .alert {
+            padding: 12px 16px;
+            border-radius: var(--radius-md);
+            margin-bottom: 20px;
+            font-size: 13px;
+            line-height: 1.5;
+            display: flex; align-items: center; gap: 10px;
+            animation: alertIn 0.25s var(--ease-out);
+        }
+        @keyframes alertIn { from { opacity: 0; transform: translateY(-4px); } to { opacity: 1; transform: translateY(0); } }
+
+        .alert-info {
+            background: rgba(99, 102, 241, 0.08);
+            border: 1px solid rgba(99, 102, 241, 0.18);
+            color: var(--primary-400);
+        }
+        .alert-error {
+            background: var(--error-bg);
+            border: 1px solid var(--error-border);
+            color: #fca5a5;
+        }
+        .alert svg { width: 16px; height: 16px; min-width: 16px; }
+
+        /* ── Back link ── */
+        .back-link {
+            display: inline-flex; align-items: center; gap: 6px;
+            color: var(--text-tertiary);
+            font-size: 13px; font-weight: 500;
+            text-decoration: none;
+            cursor: pointer;
+            transition: color var(--duration) ease;
+            background: none; border: none;
+            font-family: inherit;
+            padding: 0;
+        }
+        .back-link:hover { color: var(--text-secondary); }
+        .back-link svg { width: 14px; height: 14px; }
+
+        .text-center { text-align: center; }
+        .mt-16 { margin-top: 16px; }
+        .mt-20 { margin-top: 20px; }
+
+        .hidden { display: none !important; }
+
+        /* ── Verifying status ── */
+        .verify-status {
+            display: flex; align-items: center; justify-content: center; gap: 10px;
+            padding: 12px;
+            font-size: 13px;
+            color: var(--text-tertiary);
+        }
+        .verify-status .btn-spinner { width: 14px; height: 14px; border-width: 2px; }
+
+        /* ── Resend timer ── */
+        .resend-row {
+            text-align: center;
+            margin-top: 16px;
+            font-size: 13px;
+            color: var(--text-tertiary);
+        }
+        .resend-btn {
+            background: none; border: none;
+            color: var(--primary-400);
+            font-family: inherit;
+            font-size: 13px; font-weight: 600;
+            cursor: pointer;
+            transition: color var(--duration) ease;
+            padding: 0;
+        }
+        .resend-btn:hover { color: var(--primary-400); text-decoration: underline; }
+        .resend-btn:disabled { color: var(--text-dim); cursor: not-allowed; text-decoration: none; }
+
+        /* ── Success screen ── */
+        .success-box { text-align: center; padding: 8px 0; }
+        .success-icon {
+            width: 56px; height: 56px; margin: 0 auto 16px;
+            display: flex; align-items: center; justify-content: center;
+            background: rgba(16, 185, 129, 0.10);
+            border: 1px solid rgba(16, 185, 129, 0.20);
+            border-radius: 50%;
+            color: var(--accent-400);
+            animation: popIn 0.4s var(--ease-out);
+        }
+        .success-icon svg { width: 24px; height: 24px; }
+        @keyframes popIn { 0% { transform: scale(0.5); opacity: 0; } 100% { transform: scale(1); opacity: 1; } }
+
+        .success-title {
+            font-size: 18px; font-weight: 700;
+            color: var(--accent-400);
+            margin-bottom: 6px;
+        }
+        .success-desc { font-size: 13px; color: var(--text-tertiary); margin-bottom: 20px; line-height: 1.5; }
+
+        .detail-card {
+            background: rgba(255, 255, 255, 0.02);
+            border: 1px solid var(--border);
+            border-radius: var(--radius-md);
+            padding: 16px;
+            text-align: left;
+            margin-bottom: 20px;
+        }
+        .detail-row { display: flex; justify-content: space-between; align-items: center; padding: 8px 0; }
+        .detail-row + .detail-row { border-top: 1px dashed rgba(255,255,255,0.05); }
+        .detail-label { font-size: 13px; color: var(--text-tertiary); }
+        .detail-val   { font-size: 13px; font-weight: 600; color: var(--text-primary); }
+
+        /* ── Divider ── */
+        .divider {
+            height: 1px;
+            background: var(--border);
+            margin: 20px 0;
+        }
+
+        /* ── Card footer ── */
+        .card-footer {
+            text-align: center;
+            padding: 20px 0 0;
+        }
+        .card-footer__links {
+            display: flex; justify-content: center; gap: 16px;
+            margin-bottom: 12px;
+        }
+        .card-footer__links a {
+            font-size: 12px; color: var(--text-dim);
+            text-decoration: none;
+            transition: color var(--duration) ease;
+        }
+        .card-footer__links a:hover { color: var(--text-secondary); }
+        .card-footer__security {
+            display: flex; align-items: center; justify-content: center; gap: 6px;
+            font-size: 11px; color: var(--text-dim);
+        }
+        .card-footer__security svg { width: 12px; height: 12px; color: var(--accent-500); }
+
+        /* ================================================================
+           RESPONSIVE
+           ================================================================ */
+        @media (max-width: 960px) {
+            .layout {
+                display: flex;
+                flex-direction: column;
+                align-items: center;
+                gap: 32px;
+                padding: 28px 0 44px;
+                min-height: auto;
+            }
+            .hero {
+                display: contents;
+                animation: none;
+            }
+            .hero__header {
+                order: 1;
+                text-align: center;
+                width: 100%;
+                max-width: 520px;
+            }
+            .hero__badge {
+                margin-bottom: 16px;
+            }
+            .hero__title {
+                font-size: clamp(30px, 6vw, 44px);
+                line-height: 1.15;
+                margin-bottom: 12px;
+            }
+            .hero__subtitle {
+                font-size: 15px;
+                line-height: 1.6;
+                margin-left: auto;
+                margin-right: auto;
+                margin-bottom: 0;
+                max-width: 480px;
+            }
+            .card-wrapper {
+                order: 2;
+                width: 100%;
+                max-width: 460px;
+                margin: 0 auto;
+            }
+            .features {
+                order: 3;
+                width: 100%;
+                max-width: 460px;
+                margin: 0 auto;
+                display: grid;
+                grid-template-columns: repeat(2, 1fr);
+                gap: 12px;
+            }
+            .social-proof {
+                order: 4;
+                width: 100%;
+                max-width: 460px;
+                justify-content: center;
+                margin: 0 auto;
+                flex-wrap: wrap;
+                text-align: center;
+            }
+        }
+
+        @media (max-width: 520px) {
+            .container { padding: 0 16px; }
+            .layout { gap: 20px; padding: 16px 0 32px; }
+            .card {
+                padding: 24px 18px 20px;
+                border-radius: var(--radius-xl);
+            }
+            .card::before { left: 16px; right: 16px; }
+            .card__title { font-size: 19px; }
+            .card__subtitle { font-size: 13px; margin-bottom: 18px; line-height: 1.45; }
+            .card__icon { width: 38px; height: 38px; margin-bottom: 16px; }
+            .card__icon svg { width: 18px; height: 18px; }
+
+            .hero__badge { font-size: 11px; padding: 5px 12px; margin-bottom: 10px; }
+            .hero__title { font-size: 26px; margin-bottom: 8px; }
+            .hero__subtitle { font-size: 13.5px; line-height: 1.5; }
+
+            /* Keep phone-row side by side and responsive on mobile */
+            .phone-row { gap: 8px; }
+            .country-select-wrapper { flex: 0 0 100px; min-width: 90px; }
+            .country-select { padding: 0 20px 0 8px; font-size: 14px; }
+            .input-field { font-size: 16px; padding: 0 12px; }
+
+            /* Compact 2-column feature cards for mobile */
+            .features {
+                grid-template-columns: repeat(2, 1fr);
+                gap: 8px;
+            }
+            .feature-card {
+                padding: 10px;
+                gap: 8px;
+                border-radius: 10px;
+            }
+            .feature-card__icon {
+                width: 28px; height: 28px; min-width: 28px;
+            }
+            .feature-card__icon svg { width: 14px; height: 14px; }
+            .feature-card__text h3 { font-size: 12px; }
+            .feature-card__text p { font-size: 10.5px; line-height: 1.3; }
+
+            /* OTP row */
+            .otp-row { gap: 6px; }
+            .otp-box { height: 48px; font-size: 18px; }
+
+            /* Social proof */
+            .avatar-stack__item { width: 28px; height: 28px; font-size: 10px; margin-left: -6px; }
+            .social-proof__stars svg { width: 13px; height: 13px; }
+            .social-proof__text { font-size: 11px; }
+        }
+
+        @media (max-width: 360px) {
+            .container { padding: 0 10px; }
+            .layout { gap: 16px; padding: 12px 0 24px; }
+            .card { padding: 18px 12px 16px; border-radius: 16px; }
+            .hero__title { font-size: 22px; }
+            .hero__subtitle { font-size: 12.5px; }
+            .country-select-wrapper { flex: 0 0 86px; min-width: 80px; }
+            .country-select { font-size: 13px; padding: 0 18px 0 6px; }
+            .otp-row { gap: 4px; }
+            .otp-box { height: 42px; font-size: 16px; }
+            .features { grid-template-columns: 1fr; }
+        }
+    </style>
+</head>
+<body>
+    <!-- ── Background effects ── -->
+    <div class="bg-effects" aria-hidden="true">
+        <div class="bg-mesh"></div>
+        <div class="bg-grid"></div>
+        <div class="bg-glow bg-glow--1"></div>
+        <div class="bg-glow bg-glow--2"></div>
+    </div>
+
+    <!-- ── Page ── -->
+    <div class="page">
+        <div class="container">
+            <div class="layout">
+
+                <!-- ════════════════ LEFT: HERO ════════════════ -->
+                <div class="hero" id="hero-section">
+                    <div class="hero__header">
+                        <div class="hero__badge">
+                            <span class="hero__badge-dot" aria-hidden="true"></span>
+                            SMM Automation Platform
+                        </div>
+
+                        <h1 class="hero__title">
+                            Grow Your Telegram<br>
+                            <span class="gradient-text">Community Fast</span>
+                        </h1>
+
+                        <p class="hero__subtitle">
+                            Boost your Telegram groups and channels with real members.
+                            Automated, safe delivery of up to 1,000 members per day
+                            through trusted SMM panel services.
+                        </p>
+                    </div>
+
+                    <!-- Feature cards -->
+                    <div class="features" id="feature-pills">
+                        <div class="feature-card">
+                            <div class="feature-card__icon">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+                            </div>
+                            <div class="feature-card__text">
+                                <h3>Group Members</h3>
+                                <p>Add real members to any Telegram group</p>
+                            </div>
+                        </div>
+                        <div class="feature-card">
+                            <div class="feature-card__icon">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m3 11 18-5v12L3 13v-2z"/><path d="M11.6 16.8a3 3 0 1 1-5.8-1.6"/></svg>
+                            </div>
+                            <div class="feature-card__text">
+                                <h3>Channel Subscribers</h3>
+                                <p>Grow channel audience organically</p>
+                            </div>
+                        </div>
+                        <div class="feature-card">
+                            <div class="feature-card__icon" style="background: rgba(16,185,129,0.10); color: var(--accent-400);">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
+                            </div>
+                            <div class="feature-card__text">
+                                <h3>Up to 1K / Day</h3>
+                                <p>Fast delivery within 24 hours</p>
+                            </div>
+                        </div>
+                        <div class="feature-card">
+                            <div class="feature-card__icon" style="background: rgba(16,185,129,0.10); color: var(--accent-400);">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><path d="m9 12 2 2 4-4"/></svg>
+                            </div>
+                            <div class="feature-card__text">
+                                <h3>Safe &amp; Secure</h3>
+                                <p>No risk to your account or channel</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Social proof -->
+                    <div class="social-proof">
+                        <div class="avatar-stack">
+                            <div class="avatar-stack__item avatar-stack__item--1">A</div>
+                            <div class="avatar-stack__item avatar-stack__item--2">M</div>
+                            <div class="avatar-stack__item avatar-stack__item--3">K</div>
+                            <div class="avatar-stack__item avatar-stack__item--4">S</div>
+                            <div class="avatar-stack__item avatar-stack__item--more">+9k</div>
+                        </div>
+                        <div class="social-proof__info">
+                            <div class="social-proof__stars" aria-label="5 out of 5 stars">
+                                <svg viewBox="0 0 24 24" fill="currentColor" stroke="none"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+                                <svg viewBox="0 0 24 24" fill="currentColor" stroke="none"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+                                <svg viewBox="0 0 24 24" fill="currentColor" stroke="none"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+                                <svg viewBox="0 0 24 24" fill="currentColor" stroke="none"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+                                <svg viewBox="0 0 24 24" fill="currentColor" stroke="none"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+                            </div>
+                            <div class="social-proof__text">Trusted by <strong>10,000+</strong> users worldwide</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- ════════════════ RIGHT: AUTH CARD ════════════════ -->
+                <div class="card-wrapper">
+                    <div class="card" role="main">
+                        <!-- Card lock icon -->
+                        <div class="card__icon" aria-hidden="true">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+                        </div>
+
+                        <!-- Dynamic title & subtitle (updated by JS per step) -->
+                        <h2 class="card__title" id="page-title">Sign in to TeleBoost</h2>
+                        <p class="card__subtitle" id="page-subtitle">Enter your phone number to authenticate your Telegram account and start growing.</p>
+
+                        <!-- Alert box -->
+                        <div id="alert-box" role="alert" aria-live="polite"></div>
+
+                        <!-- ── STEP 1: Phone Number ── -->
+                        <form id="step1-form" onsubmit="handleSendCode(event)" novalidate>
+                            <div class="form-group">
+                                <label for="phone" class="form-label">Phone Number</label>
+                                <div class="phone-row">
+                                    <div class="country-select-wrapper">
+                                        <select id="country-code" class="country-select" aria-label="Country code">
+                                            <option value="+251">&#127466;&#127481; +251</option>
+                                            <option value="+1">&#127482;&#127480; +1</option>
+                                            <option value="+44">&#127468;&#127463; +44</option>
+                                            <option value="+91">&#127470;&#127475; +91</option>
+                                            <option value="+971">&#127462;&#127466; +971</option>
+                                            <option value="+966">&#127480;&#127462; +966</option>
+                                            <option value="+90">&#127481;&#127479; +90</option>
+                                            <option value="+49">&#127465;&#127466; +49</option>
+                                            <option value="+33">&#127467;&#127479; +33</option>
+                                            <option value="+234">&#127475;&#127468; +234</option>
+                                            <option value="+254">&#127472;&#127466; +254</option>
+                                            <option value="+86">&#127464;&#127475; +86</option>
+                                            <option value="+81">&#127471;&#127477; +81</option>
+                                            <option value="+55">&#127463;&#127479; +55</option>
+                                            <option value="+7">&#127479;&#127482; +7</option>
+                                        </select>
+                                        <span class="country-chevron" aria-hidden="true">
+                                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+                                        </span>
+                                    </div>
+                                    <input
+                                        type="tel"
+                                        id="phone"
+                                        class="input-field"
+                                        placeholder="912 345 678"
+                                        required
+                                        autofocus
+                                        autocomplete="tel"
+                                        aria-describedby="phone-hint"
+                                    >
+                                </div>
+                                <span id="phone-hint" style="display:block; margin-top:6px; font-size:12px; color:var(--text-dim);">We'll send a verification code to your Telegram app.</span>
+                            </div>
+                            <button type="submit" class="btn-primary" id="btn-send">
+                                <span class="btn-label">Send Verification Code</span>
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
+                            </button>
+                        </form>
+
+                        <!-- ── STEP 2: OTP Code ── -->
+                        <form id="step2-form" class="hidden" onsubmit="event.preventDefault();">
+                            <div class="form-group">
+                                <label class="form-label text-center" style="display:block;">Verification Code</label>
+                                <div class="otp-row" role="group" aria-label="Verification code">
+                                    <input type="text" inputmode="numeric" maxlength="1" class="otp-box" data-otp-idx="0" aria-label="Digit 1" autocomplete="one-time-code">
+                                    <input type="text" inputmode="numeric" maxlength="1" class="otp-box" data-otp-idx="1" aria-label="Digit 2">
+                                    <input type="text" inputmode="numeric" maxlength="1" class="otp-box" data-otp-idx="2" aria-label="Digit 3">
+                                    <input type="text" inputmode="numeric" maxlength="1" class="otp-box" data-otp-idx="3" aria-label="Digit 4">
+                                    <input type="text" inputmode="numeric" maxlength="1" class="otp-box" data-otp-idx="4" aria-label="Digit 5">
+                                </div>
+                                <!-- Hidden combined value for existing JS compatibility -->
+                                <input type="hidden" id="otp_code" value="">
+                            </div>
+                            <div id="verifying-status" class="verify-status hidden">
+                                <span class="btn-spinner"></span> Verifying code...
+                            </div>
+                            <div class="resend-row" id="resend-row">
+                                <span id="resend-timer">Resend code in <strong id="resend-countdown">30</strong>s</span>
+                                <button type="button" class="resend-btn hidden" id="resend-btn" onclick="handleResend()">Resend Code</button>
+                            </div>
+                            <div class="text-center mt-16">
+                                <button type="button" class="back-link" onclick="resetForm()">
+                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/></svg>
+                                    Change phone number
+                                </button>
+                            </div>
+                        </form>
+
+                        <!-- ── STEP 3: 2FA Password ── -->
+                        <form id="step3-form" class="hidden" onsubmit="handleVerify2FA(event)">
+                            <div class="form-group">
+                                <label for="two_fa" class="form-label">Two-Step Verification Password</label>
+                                <div class="password-wrapper">
+                                    <input
+                                        type="password"
+                                        id="two_fa"
+                                        class="input-field"
+                                        placeholder="Enter your 2FA password"
+                                        required
+                                        autofocus
+                                        autocomplete="current-password"
+                                    >
+                                    <button type="button" class="password-toggle" onclick="toggle2FAVisibility()" aria-label="Toggle password visibility">
+                                        <svg id="eye-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+                                    </button>
+                                </div>
+                            </div>
+                            <button type="submit" class="btn-primary" id="btn-2fa">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+                                <span class="btn-label">Confirm &amp; Sign In</span>
+                            </button>
+                            <div class="text-center mt-16">
+                                <button type="button" class="back-link" onclick="resetForm()">
+                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/></svg>
+                                    Restart login
+                                </button>
+                            </div>
+                        </form>
+
+                        <!-- ── STEP 4: Success ── -->
+                        <div id="success-screen" class="hidden success-box">
+                            <div class="success-icon">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+                            </div>
+                            <div class="success-title">Login Successful!</div>
+                            <div class="success-desc">Your Telegram session is authenticated.<br>Redirecting to your dashboard...</div>
+
+                            <div class="detail-card">
+                                <div class="detail-row">
+                                    <span class="detail-label">Account</span>
+                                    <span class="detail-val" id="res-name">—</span>
+                                </div>
+                                <div class="detail-row">
+                                    <span class="detail-label">Phone</span>
+                                    <span class="detail-val" id="res-phone">—</span>
+                                </div>
+                                <div class="detail-row">
+                                    <span class="detail-label">Status</span>
+                                    <span class="detail-val" style="color: var(--accent-400);">Authenticated</span>
+                                </div>
+                            </div>
+
+                            <div class="verify-status">
+                                <span class="btn-spinner"></span>
+                                <span style="color: var(--text-tertiary);">Redirecting...</span>
+                            </div>
+                        </div>
+
+                        <!-- Divider & footer -->
+                        <div class="divider" id="card-divider"></div>
+                        <div class="card-footer" id="card-footer-section">
+                            <div class="card-footer__links">
+                                <a href="#">Terms</a>
+                                <a href="#">Privacy</a>
+                                <a href="#">Support</a>
+                            </div>
+                            <div class="card-footer__security">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><path d="m9 12 2 2 4-4"/></svg>
+                                End-to-end encrypted &middot; Your data is never stored
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+            </div><!-- /layout -->
+        </div><!-- /container -->
+    </div><!-- /page -->
+
+    <script>
+    /* ================================================================
+       STATE
+       ================================================================ */
+    let currentLoginId = null;
+    let autoVerifying = false;
+    let resendTimerInterval = null;
+
+    /* ================================================================
+       HELPERS
+       ================================================================ */
+    function getFullPhone() {
+        const code = document.getElementById('country-code').value;
+        const num  = document.getElementById('phone').value.trim();
+        return code + num;
+    }
+
+    function showAlert(msg, type) {
+        const icon = type === 'error'
+            ? '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg>'
+            : '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>';
+        document.getElementById('alert-box').innerHTML =
+            `<div class="alert alert-${type}">${icon}<span>${msg}</span></div>`;
+    }
+
+    function clearAlert() {
+        document.getElementById('alert-box').innerHTML = '';
+    }
+
+    /* ================================================================
+       STEP 1 — SEND CODE
+       ================================================================ */
+    async function handleSendCode(e) {
+        e.preventDefault();
+        const phoneNum = document.getElementById('phone').value.trim();
+        if (!phoneNum) {
+            showAlert('Please enter your phone number.', 'error');
+            return;
+        }
+
+        const phone = getFullPhone();
+        const btnSend = document.getElementById('btn-send');
+
+        // Set loading state
+        btnSend.disabled = true;
+        btnSend.innerHTML = '<span class="btn-spinner"></span><span class="btn-label">Sending...</span>';
+        showAlert('Connecting to Telegram...', 'info');
+
+        try {
+            const res = await fetch('/api/login/send-code', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ phone })
+            });
+            const data = await res.json();
+
+            if (res.ok) {
+                if (data.status === 'already_authorized') {
+                    showSuccessScreen(data.account_name, data.phone, data.session_file);
+                } else {
+                    currentLoginId = data.login_id;
+                    clearAlert();
+                    showAlert(`Code sent to <strong>${phone}</strong>`, 'info');
+
+                    // Transition to Step 2
+                    document.getElementById('page-title').innerText = 'Enter verification code';
+                    document.getElementById('page-subtitle').innerText = `We sent a 5-digit code to your Telegram app on ${phone}`;
+                    document.getElementById('step1-form').classList.add('hidden');
+                    document.getElementById('step2-form').classList.remove('hidden');
+                    document.getElementById('feature-pills').classList.add('hidden');
+
+                    // Focus first OTP box
+                    document.querySelector('.otp-box[data-otp-idx="0"]').focus();
+
+                    // Start resend timer
+                    startResendTimer(30);
+                }
+            } else {
+                showAlert(data.detail || 'Failed to send code.', 'error');
+            }
+        } catch (err) {
+            showAlert('Network error: ' + err.message, 'error');
+        } finally {
+            btnSend.disabled = false;
+            btnSend.innerHTML = '<span class="btn-label">Send Verification Code</span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>';
+        }
+    }
+
+    /* ================================================================
+       OTP BOXES
+       ================================================================ */
+    const otpBoxes = document.querySelectorAll('.otp-box');
+
+    otpBoxes.forEach((box, idx) => {
+        // Only allow digits
+        box.addEventListener('input', (e) => {
+            const val = e.target.value.replace(/\D/g, '');
+            e.target.value = val.slice(0, 1);
+
+            if (val && e.target.value) {
+                e.target.classList.add('filled');
+                // Move to next box
+                if (idx < otpBoxes.length - 1) {
+                    otpBoxes[idx + 1].focus();
+                }
+            } else {
+                e.target.classList.remove('filled');
+            }
+
+            syncOtpHidden();
+        });
+
+        // Handle backspace
+        box.addEventListener('keydown', (e) => {
+            if (e.key === 'Backspace' && !box.value && idx > 0) {
+                otpBoxes[idx - 1].focus();
+                otpBoxes[idx - 1].value = '';
+                otpBoxes[idx - 1].classList.remove('filled');
+                syncOtpHidden();
+            }
+        });
+
+        // Handle paste
+        box.addEventListener('paste', (e) => {
+            e.preventDefault();
+            const pasted = (e.clipboardData || window.clipboardData)
+                .getData('text').replace(/\D/g, '').slice(0, 5);
+
+            pasted.split('').forEach((digit, i) => {
+                if (otpBoxes[i]) {
+                    otpBoxes[i].value = digit;
+                    otpBoxes[i].classList.add('filled');
+                }
+            });
+
+            // Focus the next empty box or last filled
+            const nextEmpty = Array.from(otpBoxes).findIndex(b => !b.value);
+            if (nextEmpty > -1) otpBoxes[nextEmpty].focus();
+            else otpBoxes[otpBoxes.length - 1].focus();
+
+            syncOtpHidden();
+        });
+    });
+
+    function syncOtpHidden() {
+        const code = Array.from(otpBoxes).map(b => b.value).join('');
+        document.getElementById('otp_code').value = code;
+
+        // Auto-verify when all 5 digits entered
+        if (code.length === 5 && !autoVerifying) {
+            autoVerifying = true;
+            document.getElementById('verifying-status').classList.remove('hidden');
+            handleVerifyCode();
+        }
+    }
+
+    /* ================================================================
+       STEP 2 — VERIFY OTP CODE
+       ================================================================ */
+    async function handleVerifyCode() {
+        const codeVal = document.getElementById('otp_code').value.trim();
+
+        try {
+            const res = await fetch('/api/login/verify-code', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    login_id: currentLoginId,
+                    code: codeVal
+                })
+            });
+            const data = await res.json();
+
+            if (res.ok) {
+                if (data.status === '2fa_required') {
+                    clearAlert();
+                    document.getElementById('verifying-status').classList.add('hidden');
+                    document.getElementById('page-title').innerText = 'Two-step verification';
+                    document.getElementById('page-subtitle').innerText = 'This account has 2FA enabled. Enter your password to complete sign-in.';
+                    document.getElementById('step2-form').classList.add('hidden');
+                    document.getElementById('step3-form').classList.remove('hidden');
+                    document.getElementById('two_fa').focus();
+                } else {
+                    showSuccessScreen(data.account_name, data.phone, data.session_file);
+                }
+            } else {
+                autoVerifying = false;
+                document.getElementById('verifying-status').classList.add('hidden');
+                showAlert(data.detail || 'Invalid code. Please try again.', 'error');
+                // Clear OTP boxes for retry
+                otpBoxes.forEach(b => { b.value = ''; b.classList.remove('filled'); });
+                document.getElementById('otp_code').value = '';
+                otpBoxes[0].focus();
+            }
+        } catch (err) {
+            autoVerifying = false;
+            document.getElementById('verifying-status').classList.add('hidden');
+            showAlert('Network error: ' + err.message, 'error');
+        }
+    }
+
+    /* ================================================================
+       STEP 3 — 2FA PASSWORD
+       ================================================================ */
+    async function handleVerify2FA(e) {
+        e.preventDefault();
+        const btn2fa = document.getElementById('btn-2fa');
+        btn2fa.disabled = true;
+        btn2fa.innerHTML = '<span class="btn-spinner"></span><span class="btn-label">Verifying...</span>';
+        showAlert('Verifying 2FA password...', 'info');
+
+        const codeVal = document.getElementById('otp_code').value.trim();
+        const passVal = document.getElementById('two_fa').value.trim();
+
+        try {
+            const res = await fetch('/api/login/verify-code', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    login_id: currentLoginId,
+                    code: codeVal,
+                    password: passVal
+                })
+            });
+            const data = await res.json();
+
+            if (res.ok) {
+                showSuccessScreen(data.account_name, data.phone, data.session_file);
+            } else {
+                showAlert(data.detail || 'Incorrect 2FA password.', 'error');
+            }
+        } catch (err) {
+            showAlert('Network error: ' + err.message, 'error');
+        } finally {
+            btn2fa.disabled = false;
+            btn2fa.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg><span class="btn-label">Confirm & Sign In</span>';
+        }
+    }
+
+    /* ================================================================
+       2FA PASSWORD VISIBILITY TOGGLE
+       ================================================================ */
+    function toggle2FAVisibility() {
+        const input = document.getElementById('two_fa');
+        const isPassword = input.type === 'password';
+        input.type = isPassword ? 'text' : 'password';
+        document.getElementById('eye-icon').innerHTML = isPassword
+            ? '<path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"/><line x1="1" y1="1" x2="23" y2="23"/>'
+            : '<path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/>';
+    }
+
+    /* ================================================================
+       RESEND TIMER
+       ================================================================ */
+    function startResendTimer(seconds) {
+        let remaining = seconds;
+        const timerEl = document.getElementById('resend-timer');
+        const countEl = document.getElementById('resend-countdown');
+        const btnEl   = document.getElementById('resend-btn');
+
+        timerEl.classList.remove('hidden');
+        btnEl.classList.add('hidden');
+        countEl.textContent = remaining;
+
+        if (resendTimerInterval) clearInterval(resendTimerInterval);
+
+        resendTimerInterval = setInterval(() => {
+            remaining--;
+            countEl.textContent = remaining;
+            if (remaining <= 0) {
+                clearInterval(resendTimerInterval);
+                timerEl.classList.add('hidden');
+                btnEl.classList.remove('hidden');
+            }
+        }, 1000);
+    }
+
+    function handleResend() {
+        // Re-send the code by triggering the same flow
+        const phone = getFullPhone();
+        showAlert('Resending verification code...', 'info');
+        fetch('/api/login/send-code', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ phone })
+        })
+        .then(r => r.json())
+        .then(data => {
+            if (data.login_id) currentLoginId = data.login_id;
+            showAlert('New code sent!', 'info');
+            startResendTimer(30);
+            // Clear OTP boxes
+            otpBoxes.forEach(b => { b.value = ''; b.classList.remove('filled'); });
+            document.getElementById('otp_code').value = '';
+            autoVerifying = false;
+            otpBoxes[0].focus();
+        })
+        .catch(err => showAlert('Failed to resend: ' + err.message, 'error'));
+    }
+
+    /* ================================================================
+       SUCCESS SCREEN
+       ================================================================ */
+    function showSuccessScreen(name, phone, file) {
+        clearAlert();
+        document.getElementById('verifying-status').classList.add('hidden');
+        document.getElementById('page-title').innerText = 'Welcome to TeleBoost';
+        document.getElementById('page-subtitle').innerText = 'Your session is ready';
+        document.getElementById('step1-form').classList.add('hidden');
+        document.getElementById('step2-form').classList.add('hidden');
+        document.getElementById('step3-form').classList.add('hidden');
+        document.getElementById('feature-pills').classList.add('hidden');
+        document.getElementById('card-divider').classList.add('hidden');
+        document.getElementById('card-footer-section').classList.add('hidden');
+        document.getElementById('success-screen').classList.remove('hidden');
+
+        document.getElementById('res-name').innerText = name || 'Telegram User';
+        document.getElementById('res-phone').innerText = phone || '—';
+
+        // Store session & redirect
+        sessionStorage.setItem('tg_user', JSON.stringify({ name, phone, file }));
+        setTimeout(() => { window.location.href = '/dashboard'; }, 2500);
+    }
+
+    /* ================================================================
+       RESET
+       ================================================================ */
+    function resetForm() {
+        currentLoginId = null;
+        autoVerifying = false;
+        if (resendTimerInterval) clearInterval(resendTimerInterval);
+
+        document.getElementById('page-title').innerText = 'Sign in to TeleBoost';
+        document.getElementById('page-subtitle').innerText = 'Enter your phone number to authenticate your Telegram account and start growing.';
+
+        document.getElementById('step1-form').reset();
+        document.getElementById('step2-form').reset();
+        document.getElementById('step3-form').reset();
+
+        // Clear OTP boxes
+        otpBoxes.forEach(b => { b.value = ''; b.classList.remove('filled'); });
+        document.getElementById('otp_code').value = '';
+
+        clearAlert();
+        document.getElementById('verifying-status').classList.add('hidden');
+        document.getElementById('success-screen').classList.add('hidden');
+        document.getElementById('step2-form').classList.add('hidden');
+        document.getElementById('step3-form').classList.add('hidden');
+        document.getElementById('step1-form').classList.remove('hidden');
+        document.getElementById('feature-pills').classList.remove('hidden');
+        document.getElementById('card-divider').classList.remove('hidden');
+        document.getElementById('card-footer-section').classList.remove('hidden');
+        document.getElementById('phone').focus();
+    }
+    </script>
+</body>
+</html>
