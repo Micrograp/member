@@ -123,14 +123,44 @@ def create_telegram_client(
     """
     Create a TelegramClient using StringSession (cloud-safe).
     
-    session_string: empty string '' for new sessions, or a saved StringSession
-                    string to resume an existing session.
+    Spoofs legitimate Desktop device parameters (device_model, system_version, app_version)
+    to prevent Telegram's anti-fraud algorithm from detecting a headless Linux/datacenter bot.
     """
     proxy = get_proxy_config(acc) if acc else None
+    
+    # Check for global proxy in environment if no account-specific proxy is configured
+    if not proxy:
+        g_type = os.getenv("GLOBAL_PROXY_TYPE", "").strip().lower()
+        g_host = os.getenv("GLOBAL_PROXY_HOST", "").strip()
+        g_port = os.getenv("GLOBAL_PROXY_PORT", "").strip()
+        if g_type and g_host and g_port:
+            try:
+                proxy = {
+                    "proxy_type": g_type,
+                    "addr": g_host,
+                    "port": int(g_port),
+                    "rdns": True
+                }
+                if os.getenv("GLOBAL_PROXY_USER"):
+                    proxy["username"] = os.getenv("GLOBAL_PROXY_USER").strip()
+                if os.getenv("GLOBAL_PROXY_PASS"):
+                    proxy["password"] = os.getenv("GLOBAL_PROXY_PASS").strip()
+            except Exception:
+                proxy = None
+
     ss = StringSession(session_string)
+    
+    client_kwargs = {
+        "device_model": "Desktop",
+        "system_version": "Windows 11",
+        "app_version": "5.6.3 x64",
+        "lang_code": "en",
+        "system_lang_code": "en"
+    }
     if proxy:
-        return TelegramClient(ss, api_id, api_hash, proxy=proxy)
-    return TelegramClient(ss, api_id, api_hash)
+        client_kwargs["proxy"] = proxy
+
+    return TelegramClient(ss, api_id, api_hash, **client_kwargs)
 
 
 def save_session_string(session_file: str, session_string: str):

@@ -291,6 +291,8 @@ async def verify_otp_code(req: VerifyCodeRequest):
                 }
             await client.sign_in(password=req.password.strip())
 
+        # Humanized pause to avoid triggering Telegram's rapid automated bot heuristics
+        await asyncio.sleep(1.0)
         me = await client.get_me()
         real_name = f"{me.first_name or ''} {me.last_name or ''}".strip()
         if me.username:
@@ -298,8 +300,9 @@ async def verify_otp_code(req: VerifyCodeRequest):
         if not real_name:
             real_name = f"Telegram Account ({phone})"
 
-        # ── KEY CHANGE: Save StringSession to MongoDB BEFORE disconnecting ──
+        # Save StringSession to MongoDB BEFORE disconnecting
         saved_session = client.session.save()
+        await asyncio.sleep(0.5)
         await client.disconnect()
         PENDING_SESSIONS.pop(req.login_id, None)
 
