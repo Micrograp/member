@@ -1,127 +1,69 @@
 """
-core/session_manager.py — Core Telegram Session Engine & SQLite Storage
+core/session_manager.py — Core Telegram Session Engine & MongoDB Storage
 
-Manages Telegram session files, SQLite database persistence (data/accounts.db),
+Manages Telegram sessions as StringSessions stored in MongoDB Atlas,
 proxy configuration, and Telethon error recovery.
+
+All data persists in the cloud — immune to Render's ephemeral filesystem.
 """
 
 import os
 import sys
 import json
-import sqlite3
-import asyncio
 from datetime import date, datetime
 from typing import List, Dict, Optional, Any
 
 from dotenv import load_dotenv
 from telethon import TelegramClient, errors
+from telethon.sessions import StringSession
+from pymongo import MongoClient
 
 load_dotenv()
 
-# Determine project root directory dynamically (copy-login root)
-CORE_DIR = os.path.dirname(os.path.abspath(__file__))
-BASE_DIR = os.path.dirname(CORE_DIR)
+# ─────────────────────────────────────────────────────────────────────────────
+#  MongoDB Connection
+# ─────────────────────────────────────────────────────────────────────────────
 
-DATA_DIR     = os.path.join(BASE_DIR, "data")
-SESSIONS_DIR = os.path.join(BASE_DIR, "sessions")
-DB_FILE      = os.path.join(DATA_DIR, "accounts.db")
-ACCS_JSON    = os.path.join(DATA_DIR, "accounts.json")
+MONGO_URI = os.getenv("MONGO_URI", "")
+if not MONGO_URI:
+    print("[FATAL] MONGO_URI not set in .env — cannot connect to database.")
+    sys.exit(1)
 
-os.makedirs(DATA_DIR,     exist_ok=True)
-os.makedirs(SESSIONS_DIR, exist_ok=True)
+_mongo_client = MongoClient(MONGO_URI)
+_db = _mongo_client[os.getenv("MONGO_DB_NAME", "teleboost")]
+accounts_col = _db["accounts"]
+counters_col = _db["counters"]
+
+# Create indexes for fast lookups
+accounts_col.create_index("phone", unique=True, sparse=True)
+accounts_col.create_index("session_file", unique=True, sparse=True)
+accounts_col.create_index("account_id", unique=True)
 
 DEFAULT_DAILY_LIMIT = 30   # safe adds per account per day
 
 
 # ─────────────────────────────────────────────────────────────────────────────
-#  Database Setup & Migration
+#  Auto-Increment ID Helper (replaces SQLite AUTOINCREMENT)
 # ─────────────────────────────────────────────────────────────────────────────
 
-def get_db_connection() -> sqlite3.Connection:
-    conn = sqlite3.connect(DB_FILE)
-    conn.row_factory = sqlite3.Row
-    return conn
+def _next_id() -> int:
+    """Get next auto-increment ID for accounts collection."""
+    result = counters_col.find_one_and_update(
+        {"_id": "account_id"},
+        {"$inc": {"seq": 1}},
+        upsert=True,
+        return_document=True
+    )
+    return result["seq"]
 
+
+# ─────────────────────────────────────────────────────────────────────────────
+#  Database Setup (replaces init_db / migrate_json)
+# ─────────────────────────────────────────────────────────────────────────────
 
 def init_db():
-    """Create accounts table if it does not exist and migrate legacy JSON data."""
-    with get_db_connection() as conn:
-        conn.execute("""
-            CREATE TABLE IF NOT EXISTS accounts (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                label TEXT NOT NULL,
-                phone TEXT UNIQUE NOT NULL,
-                session_file TEXT UNIQUE NOT NULL,
-                display_name TEXT DEFAULT '',
-                status TEXT DEFAULT 'active',
-                daily_adds INTEGER DEFAULT 0,
-                daily_limit INTEGER DEFAULT 30,
-                total_adds INTEGER DEFAULT 0,
-                last_active TEXT DEFAULT NULL,
-                last_reset_date TEXT DEFAULT '',
-                notes TEXT DEFAULT '',
-                proxy_type TEXT DEFAULT NULL,
-                proxy_host TEXT DEFAULT NULL,
-                proxy_port INTEGER DEFAULT NULL,
-                proxy_user TEXT DEFAULT NULL,
-                proxy_pass TEXT DEFAULT NULL,
-                two_fa_pass TEXT DEFAULT NULL,
-                created_at TEXT DEFAULT CURRENT_TIMESTAMP
-            )
-        """)
-        try:
-            conn.execute("ALTER TABLE accounts ADD COLUMN two_fa_pass TEXT DEFAULT NULL")
-        except sqlite3.OperationalError:
-            pass
-        conn.commit()
-
-    migrate_json_if_needed()
-
-
-def migrate_json_if_needed():
-    """Migrate legacy accounts.json to accounts.db if accounts.db is empty."""
-    if not os.path.exists(ACCS_JSON):
-        return
-
-    try:
-        with open(ACCS_JSON, "r", encoding="utf-8") as f:
-            legacy_data = json.load(f)
-        if not legacy_data or not isinstance(legacy_data, list):
-            return
-    except Exception:
-        return
-
-    with get_db_connection() as conn:
-        count = conn.execute("SELECT COUNT(*) FROM accounts").fetchone()[0]
-        if count == 0:
-            for acc in legacy_data:
-                conn.execute("""
-                    INSERT OR IGNORE INTO accounts (
-                        id, label, phone, session_file, display_name, status,
-                        daily_adds, daily_limit, total_adds, last_active,
-                        last_reset_date, notes, proxy_type, proxy_host, proxy_port,
-                        proxy_user, proxy_pass
-                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-                """, (
-                    acc.get("id"),
-                    acc.get("label", f"Worker {acc.get('id', 1)}"),
-                    acc.get("phone", ""),
-                    acc.get("session_file", ""),
-                    acc.get("display_name", ""),
-                    acc.get("status", "active"),
-                    acc.get("daily_adds", 0),
-                    acc.get("daily_limit", DEFAULT_DAILY_LIMIT),
-                    acc.get("total_adds", 0),
-                    acc.get("last_active", None),
-                    acc.get("last_reset_date", today_str()),
-                    acc.get("notes", ""),
-                    acc.get("proxy_type"),
-                    acc.get("proxy_host"),
-                    acc.get("proxy_port"),
-                    acc.get("proxy_user"),
-                    acc.get("proxy_pass")
-                ))
-            conn.commit()
+    """No-op for MongoDB — collections are auto-created. Kept for API compat."""
+    pass
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -172,12 +114,39 @@ def get_proxy_config(acc: Dict[str, Any]) -> Optional[dict]:
     return proxy_dict
 
 
-def create_telegram_client(sess_path: str, api_id: int, api_hash: str, acc: Optional[Dict[str, Any]] = None) -> TelegramClient:
-    """Create a Telethon TelegramClient configured with proxy if available."""
+def create_telegram_client(
+    session_string: str,
+    api_id: int,
+    api_hash: str,
+    acc: Optional[Dict[str, Any]] = None
+) -> TelegramClient:
+    """
+    Create a TelegramClient using StringSession (cloud-safe).
+    
+    session_string: empty string '' for new sessions, or a saved StringSession
+                    string to resume an existing session.
+    """
     proxy = get_proxy_config(acc) if acc else None
+    ss = StringSession(session_string)
     if proxy:
-        return TelegramClient(sess_path, api_id, api_hash, proxy=proxy)
-    return TelegramClient(sess_path, api_id, api_hash)
+        return TelegramClient(ss, api_id, api_hash, proxy=proxy)
+    return TelegramClient(ss, api_id, api_hash)
+
+
+def save_session_string(session_file: str, session_string: str):
+    """Save a Telethon StringSession string to MongoDB for the given account."""
+    accounts_col.update_one(
+        {"session_file": session_file},
+        {"$set": {"session_string": session_string}},
+    )
+
+
+def get_session_string(session_file: str) -> str:
+    """Retrieve the saved StringSession string from MongoDB. Returns '' if not found."""
+    doc = accounts_col.find_one({"session_file": session_file}, {"session_string": 1})
+    if doc and doc.get("session_string"):
+        return doc["session_string"]
+    return ""
 
 
 def handle_telethon_error(session_file: str, err: Exception) -> str:
@@ -216,37 +185,117 @@ def handle_telethon_error(session_file: str, err: Exception) -> str:
 
 
 # ─────────────────────────────────────────────────────────────────────────────
-#  Database Persistence API
+#  Database Persistence API (MongoDB)
 # ─────────────────────────────────────────────────────────────────────────────
 
 def load_accounts() -> List[dict]:
-    init_db()
-    with get_db_connection() as conn:
-        rows = conn.execute("SELECT * FROM accounts ORDER BY id ASC").fetchall()
-        return [dict(row) for row in rows]
+    """Load all accounts from MongoDB, sorted by account_id."""
+    docs = accounts_col.find({}, {"_id": 0}).sort("account_id", 1)
+    results = []
+    for doc in docs:
+        # Map MongoDB fields to the dict keys the rest of the app expects
+        doc["id"] = doc.get("account_id", 0)
+        results.append(doc)
+    return results
+
+
+def get_account_by_id(account_id: int) -> Optional[dict]:
+    """Fetch a single account by its numeric ID."""
+    doc = accounts_col.find_one({"account_id": account_id}, {"_id": 0})
+    if doc:
+        doc["id"] = doc.get("account_id", 0)
+    return doc
+
+
+def get_account_by_phone_or_session(phone: str, session_file: str) -> Optional[dict]:
+    """Look up account by phone or session_file name."""
+    doc = accounts_col.find_one(
+        {"$or": [{"phone": phone}, {"session_file": session_file}]},
+        {"_id": 0}
+    )
+    if doc:
+        doc["id"] = doc.get("account_id", 0)
+    return doc
+
+
+def upsert_account(
+    phone: str,
+    session_file: str,
+    label: str = "",
+    display_name: str = "",
+    status: str = "active",
+    two_fa_pass: Optional[str] = None,
+    session_string: str = "",
+):
+    """Insert or update an account document in MongoDB."""
+    update_fields = {
+        "label": label,
+        "display_name": display_name,
+        "status": status,
+        "last_reset_date": today_str(),
+    }
+    if session_string:
+        update_fields["session_string"] = session_string
+    if two_fa_pass is not None:
+        update_fields["two_fa_pass"] = two_fa_pass
+
+    result = accounts_col.update_one(
+        {"phone": phone},
+        {
+            "$set": update_fields,
+            "$setOnInsert": {
+                "account_id": _next_id(),
+                "phone": phone,
+                "session_file": session_file,
+                "daily_adds": 0,
+                "daily_limit": DEFAULT_DAILY_LIMIT,
+                "total_adds": 0,
+                "last_active": None,
+                "notes": "",
+                "proxy_type": None,
+                "proxy_host": None,
+                "proxy_port": None,
+                "proxy_user": None,
+                "proxy_pass": None,
+                "created_at": datetime.utcnow().isoformat(),
+            }
+        },
+        upsert=True
+    )
+    return result
+
+
+def delete_account(account_id: int):
+    """Delete an account from MongoDB by its numeric ID."""
+    accounts_col.delete_one({"account_id": account_id})
 
 
 def update_account_status(session_file: str, status: str, notes: str = ""):
+    """Update status (and optionally notes) for an account identified by session_file."""
     sess = session_file.lstrip("+").strip()
-    with get_db_connection() as conn:
-        if notes:
-            conn.execute("UPDATE accounts SET status = ?, notes = ? WHERE session_file = ?", (status, notes, sess))
-        else:
-            conn.execute("UPDATE accounts SET status = ? WHERE session_file = ?", (status, sess))
-        conn.commit()
+    update = {"status": status}
+    if notes:
+        update["notes"] = notes
+    accounts_col.update_one({"session_file": sess}, {"$set": update})
 
 
 def reset_daily_if_needed(accounts: Optional[List[dict]] = None) -> List[dict]:
     """Reset daily_adds counter for accounts whose last_reset_date != today."""
     today = today_str()
-    init_db()
-    with get_db_connection() as conn:
-        conn.execute("""
-            UPDATE accounts
-            SET daily_adds = 0,
-                last_reset_date = ?,
-                status = CASE WHEN status = 'limited' THEN 'active' ELSE status END
-            WHERE last_reset_date != ? OR last_reset_date IS NULL
-        """, (today, today))
-        conn.commit()
+    accounts_col.update_many(
+        {"$or": [
+            {"last_reset_date": {"$ne": today}},
+            {"last_reset_date": None},
+            {"last_reset_date": {"$exists": False}},
+        ]},
+        {"$set": {
+            "daily_adds": 0,
+            "last_reset_date": today,
+        }}
+    )
+    # Also reset 'limited' → 'active' for those accounts
+    accounts_col.update_many(
+        {"status": "limited", "last_reset_date": today},
+        {"$set": {"status": "active"}}
+    )
     return load_accounts()

