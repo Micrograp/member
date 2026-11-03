@@ -37,26 +37,38 @@ from pymongo import MongoClient
 #   app_version   = "<version> (<build>)" (e.g. "10.3.2 (40352)")
 #   lang_pack     = "android"
 
-_ANDROID_DEVICES = [
-    ("Samsung", "SM-S918B",  "SDK 34"),  # Galaxy S23 Ultra / Android 14
-    ("Samsung", "SM-G991B",  "SDK 33"),  # Galaxy S21 / Android 13
-    ("Google",  "Pixel 7 Pro", "SDK 33"),
-    ("Google",  "Pixel 6a",  "SDK 33"),
-    ("Xiaomi",  "2209129SC", "SDK 33"),  # Xiaomi 12T / Android 13
-    ("OnePlus", "CPH2449",   "SDK 33"),  # OnePlus Nord 2T
+# ─────────────────────────────────────────────────────────────────────────────
+#  Official Telegram App Fingerprints
+#
+#  We use Telegram Desktop (api_id=2040) because:
+#    - Android api_id=4 triggers RECAPTCHA_CHECK from datacenter/server IPs
+#    - Desktop api_id=2040 is designed to work from non-mobile environments
+#      (laptops, PCs, corporate networks, servers) without triggering CAPTCHA
+#    - The desktop fingerprint exactly matches what Telegram Desktop clients
+#      send, so it looks like a legitimate PC login and does NOT terminate
+#      existing phone/desktop sessions
+# ─────────────────────────────────────────────────────────────────────────────
+
+# Official Telegram Desktop (api_id = 2040)
+OFFICIAL_ANDROID_API_ID   = 2040   # exported as ANDROID for back-compat with app.py
+OFFICIAL_ANDROID_API_HASH = "b18441a1ff607e10a989891a5462e627"
+
+# Desktop device presets — all valid Telegram Desktop fingerprints
+_DESKTOP_DEVICES = [
+    ("PC 64bit",    "Windows 10",       "5.9.3 x64"),
+    ("PC 64bit",    "Windows 11",       "5.9.3 x64"),
+    ("Desktop",     "Windows 10",       "5.8.4 x64"),
+    ("Desktop",     "Windows 11",       "5.8.4 x64"),
+    ("MacBook Pro", "macOS 14.0",       "5.9.3 arm64"),
+    ("Mac mini",    "macOS 13.6",       "5.8.4 arm64"),
+    ("PC 64bit",    "Ubuntu 22.04",     "5.9.3 x64"),
 ]
 
-OFFICIAL_ANDROID_API_ID   = 4
-OFFICIAL_ANDROID_API_HASH = "014b35b6184100b085b0d0572f9b5103"
-OFFICIAL_ANDROID_APP_VERSION = "11.2.0 (74536)"   # Telegram Android stable 11.2
-
-# Official Telegram Desktop (api_id = 2040)  — fallback
-OFFICIAL_DESKTOP_API_ID   = 2040
-OFFICIAL_DESKTOP_API_HASH = "b18441a1ff607e10a989891a5462e627"
+OFFICIAL_ANDROID_APP_VERSION = "5.9.3 x64"  # unused directly; see _random_desktop_device
 
 def _random_android_device():
-    """Return a random realistic Android device tuple (manufacturer, model, sdk)."""
-    return random.choice(_ANDROID_DEVICES)
+    """Return a random Telegram Desktop device tuple (device_model, system_version, app_version)."""
+    return random.choice(_DESKTOP_DEVICES)
 
 load_dotenv()
 
@@ -199,18 +211,15 @@ def create_telegram_client(
 
     ss = StringSession(session_string)
 
-    # Pick a realistic Android device fingerprint
-    manufacturer, model, sdk = _random_android_device()
-    device_model   = f"{manufacturer} {model}"
-    system_version = sdk
-    app_version    = OFFICIAL_ANDROID_APP_VERSION
+    # Pick a realistic Telegram Desktop fingerprint (3-tuple: device, system, version)
+    device_model, system_version, app_version = _random_android_device()
 
     client_kwargs = {
-        "device_model":      device_model,
-        "system_version":    system_version,
-        "app_version":       app_version,
-        "lang_code":         "en",
-        "system_lang_code":  "en-US",
+        "device_model":     device_model,
+        "system_version":   system_version,
+        "app_version":      app_version,
+        "lang_code":        "en",
+        "system_lang_code": "en-US",
     }
     if proxy:
         client_kwargs["proxy"] = proxy

@@ -260,6 +260,18 @@ async def send_otp_code(req: SendCodeRequest):
     except Exception as e:
         if client.is_connected():
             await client.disconnect()
+        err_str = str(e)
+        # Special case: Telegram CAPTCHA challenge — triggered by heavy datacenter IP flagging
+        if "RECAPTCHA_CHECK" in err_str or "recaptcha" in err_str.lower():
+            raise HTTPException(
+                status_code=400,
+                detail=(
+                    "⚠️ Telegram requires a CAPTCHA challenge for this request. "
+                    "This happens when your phone number has never logged in from a server before. "
+                    "Please try: 1) Log in once via the official Telegram app to activate the account, "
+                    "or 2) Ask the admin to enable a residential proxy on the server."
+                )
+            )
         err_msg = session_manager.handle_telethon_error(sess_name, e)
         raise HTTPException(status_code=400, detail=f"Failed to send code: {err_msg}")
 
