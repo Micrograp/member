@@ -150,10 +150,14 @@ def create_telegram_client(
 
     ss = StringSession(session_string)
     
+    device_model = os.getenv("TG_DEVICE_MODEL", "TeleBoost Web").strip()
+    system_version = os.getenv("TG_SYSTEM_VERSION", "Web Platform").strip()
+    app_version = os.getenv("TG_APP_VERSION", "1.0.0").strip()
+
     client_kwargs = {
-        "device_model": "Desktop",
-        "system_version": "Windows 11",
-        "app_version": "5.6.3 x64",
+        "device_model": device_model,
+        "system_version": system_version,
+        "app_version": app_version,
         "lang_code": "en",
         "system_lang_code": "en"
     }
