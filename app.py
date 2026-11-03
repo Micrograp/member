@@ -32,6 +32,7 @@ TEMPLATES_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "templa
 ADMIN_PASSWORD = os.getenv("ADMIN_PASSWORD", "admin123")
 ADMIN_SESSIONS = set()
 PENDING_SESSIONS: Dict[str, Dict[str, Any]] = {}
+PENDING_QR_SESSIONS: Dict[str, Dict[str, Any]] = {}
 
 session_manager.init_db()
 
@@ -52,6 +53,16 @@ class VerifyCodeRequest(BaseModel):
 
 class AdminLoginRequest(BaseModel):
     password: str
+
+
+class QR2FARequest(BaseModel):
+    login_id: str
+    password: str
+
+
+class ImportSessionRequest(BaseModel):
+    session_string: str
+    phone: str
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -184,6 +195,226 @@ async def get_account_otp(account_id: int, session_token: Optional[str] = Cookie
             await client.disconnect()
         raise HTTPException(status_code=400, detail=f"Failed to fetch Telegram code: {str(e)}")
 
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+#  QR Code Login Flow (Official Telegram Desktop Protocol - Safe from Session Wipes)
+# ─────────────────────────────────────────────────────────────────────────────
+
+async def _qr_login_worker(login_id: str, qr_login, client: TelegramClient):
+    """Background worker waiting for user to scan Telegram QR in mobile app."""
+    try:
+        await qr_login.wait(timeout=180)
+
+        # Successful scan & approval on phone!
+        me = await client.get_me()
+        real_name = f"{me.first_name or ''} {me.last_name or ''}".strip()
+        if me.username:
+            real_name += f" (@{me.username})"
+        phone = f"+{me.phone}" if me.phone else "unknown"
+        if not real_name:
+            real_name = f"Telegram User ({phone})"
+
+        sess_name = phone.replace("+", "").replace(" ", "").strip()
+        saved_session = client.session.save()
+        await client.disconnect()
+
+        session_manager.upsert_account(
+            phone=phone,
+            session_file=sess_name,
+            label=real_name,
+            display_name=real_name,
+            status="active",
+            session_string=saved_session,
+        )
+
+        PENDING_QR_SESSIONS[login_id] = {
+            "status": "success",
+            "account_name": real_name,
+            "phone": phone,
+            "session_file": f"{sess_name}.session",
+        }
+    except errors.SessionPasswordNeededError:
+        if login_id in PENDING_QR_SESSIONS:
+            PENDING_QR_SESSIONS[login_id]["status"] = "2fa_required"
+    except asyncio.TimeoutError:
+        if login_id in PENDING_QR_SESSIONS:
+            PENDING_QR_SESSIONS[login_id]["status"] = "expired"
+        if client.is_connected():
+            await client.disconnect()
+    except Exception as e:
+        if login_id in PENDING_QR_SESSIONS:
+            PENDING_QR_SESSIONS[login_id] = {"status": "error", "error": str(e)}
+        if client.is_connected():
+            await client.disconnect()
+
+
+@app.post("/api/login/qr/start")
+async def start_qr_login():
+    """Start Telegram QR Code Login session."""
+    api_id   = session_manager.OFFICIAL_ANDROID_API_ID
+    api_hash = session_manager.OFFICIAL_ANDROID_API_HASH
+
+    client = session_manager.create_telegram_client("", api_id, api_hash)
+    try:
+        await client.connect()
+        qr_login = await client.qr_login()
+        login_id = str(uuid.uuid4())
+
+        PENDING_QR_SESSIONS[login_id] = {
+            "status": "pending",
+            "client": client,
+            "qr_login": qr_login,
+        }
+
+        asyncio.create_task(_qr_login_worker(login_id, qr_login, client))
+
+        return {
+            "status": "ok",
+            "login_id": login_id,
+            "url": qr_login.url,
+            "expires_in": 180
+        }
+    except Exception as e:
+        if client.is_connected():
+            await client.disconnect()
+        raise HTTPException(status_code=400, detail=f"Failed to generate QR code: {str(e)}")
+
+
+@app.get("/api/login/qr/status")
+def check_qr_status(login_id: str):
+    """Check status of a pending QR login session."""
+    sess = PENDING_QR_SESSIONS.get(login_id)
+    if not sess:
+        return {"status": "expired", "message": "QR session expired or not found."}
+
+    status = sess.get("status", "pending")
+    if status == "success":
+        res = {
+            "status": "success",
+            "account_name": sess.get("account_name"),
+            "phone": sess.get("phone"),
+            "session_file": sess.get("session_file"),
+            "message": "Registered successfully via Telegram QR code!"
+        }
+        PENDING_QR_SESSIONS.pop(login_id, None)
+        return res
+    elif status == "2fa_required":
+        return {"status": "2fa_required", "login_id": login_id, "message": "Two-Step Verification (2FA) required."}
+    elif status == "expired":
+        PENDING_QR_SESSIONS.pop(login_id, None)
+        return {"status": "expired", "message": "QR code expired. Click to refresh."}
+    elif status == "error":
+        err = sess.get("error", "Unknown error")
+        PENDING_QR_SESSIONS.pop(login_id, None)
+        return {"status": "error", "message": err}
+    else:
+        return {"status": "pending"}
+
+
+@app.post("/api/login/qr/2fa")
+async def verify_qr_2fa(req: QR2FARequest):
+    """Complete QR login with Two-Step Verification (2FA) password."""
+    sess = PENDING_QR_SESSIONS.get(req.login_id)
+    if not sess or sess.get("status") != "2fa_required":
+        raise HTTPException(status_code=400, detail="Invalid or expired QR session.")
+
+    client: TelegramClient = sess.get("client")
+    if not client:
+        raise HTTPException(status_code=400, detail="Telegram connection lost.")
+
+    try:
+        await client.sign_in(password=req.password.strip())
+        me = await client.get_me()
+        real_name = f"{me.first_name or ''} {me.last_name or ''}".strip()
+        if me.username:
+            real_name += f" (@{me.username})"
+        phone = f"+{me.phone}" if me.phone else "unknown"
+        if not real_name:
+            real_name = f"Telegram User ({phone})"
+
+        sess_name = phone.replace("+", "").replace(" ", "").strip()
+        saved_session = client.session.save()
+        await client.disconnect()
+        PENDING_QR_SESSIONS.pop(req.login_id, None)
+
+        session_manager.upsert_account(
+            phone=phone,
+            session_file=sess_name,
+            label=real_name,
+            display_name=real_name,
+            status="active",
+            two_fa_pass=req.password.strip(),
+            session_string=saved_session,
+        )
+
+        return {
+            "status": "success",
+            "account_name": real_name,
+            "phone": phone,
+            "session_file": f"{sess_name}.session",
+            "message": "Authenticated successfully with 2FA!"
+        }
+    except errors.PasswordHashInvalidError:
+        raise HTTPException(status_code=400, detail="Incorrect 2FA password.")
+    except Exception as e:
+        if client.is_connected():
+            await client.disconnect()
+        PENDING_QR_SESSIONS.pop(req.login_id, None)
+        raise HTTPException(status_code=400, detail=f"2FA login failed: {str(e)}")
+
+
+@app.post("/api/login/import-session")
+async def import_session(req: ImportSessionRequest):
+    """Import an already generated Telethon StringSession (Safe & Permanent)."""
+    session_string = req.session_string.strip()
+    phone = req.phone.strip()
+    if not session_string or not phone:
+        raise HTTPException(status_code=400, detail="Session string and phone number are required.")
+
+    api_id   = session_manager.OFFICIAL_ANDROID_API_ID
+    api_hash = session_manager.OFFICIAL_ANDROID_API_HASH
+
+    client = session_manager.create_telegram_client(session_string, api_id, api_hash)
+    try:
+        await client.connect()
+        if not await client.is_user_authorized():
+            await client.disconnect()
+            raise HTTPException(status_code=400, detail="Session string is invalid or expired.")
+
+        me = await client.get_me()
+        real_name = f"{me.first_name or ''} {me.last_name or ''}".strip()
+        if me.username:
+            real_name += f" (@{me.username})"
+        real_phone = f"+{me.phone}" if me.phone else phone
+        if not real_name:
+            real_name = f"Telegram User ({real_phone})"
+
+        sess_name = real_phone.replace("+", "").replace(" ", "").strip()
+        await client.disconnect()
+
+        session_manager.upsert_account(
+            phone=real_phone,
+            session_file=sess_name,
+            label=real_name,
+            display_name=real_name,
+            status="active",
+            session_string=session_string,
+        )
+
+        return {
+            "status": "success",
+            "account_name": real_name,
+            "phone": real_phone,
+            "session_file": f"{sess_name}.session",
+            "message": "Session string imported and registered successfully!"
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        if client.is_connected():
+            await client.disconnect()
+        raise HTTPException(status_code=400, detail=f"Failed to import session: {str(e)}")
 
 
 @app.post("/api/login/send-code")

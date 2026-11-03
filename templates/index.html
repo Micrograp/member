@@ -760,6 +760,106 @@
             .otp-box { height: 42px; font-size: 16px; }
             .features { grid-template-columns: 1fr; }
         }
+
+        /* ── Login Tabs ── */
+        .login-tabs {
+            display: flex;
+            gap: 6px;
+            margin-bottom: 1.25rem;
+            background: var(--surface-alt);
+            border: 1px solid var(--border);
+            border-radius: var(--radius-md);
+            padding: 4px;
+        }
+        .login-tab {
+            flex: 1;
+            padding: 9px 8px;
+            border: none;
+            border-radius: 9px;
+            background: transparent;
+            color: var(--text-secondary);
+            font-size: 12.5px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            text-align: center;
+        }
+        .login-tab:hover {
+            color: var(--text-primary);
+        }
+        .login-tab.active {
+            background: var(--primary-500);
+            color: #fff;
+            box-shadow: 0 2px 8px var(--primary-glow);
+        }
+
+        /* ── QR Login Styles ── */
+        .qr-instructions {
+            background: rgba(99, 102, 241, 0.08);
+            border: 1px solid rgba(99, 102, 241, 0.2);
+            border-radius: var(--radius-md);
+            padding: 12px 14px;
+            margin-bottom: 1rem;
+            font-size: 12.5px;
+            color: var(--text-secondary);
+            line-height: 1.5;
+        }
+        .qr-instructions ol {
+            margin: 0;
+            padding-left: 1.2rem;
+        }
+        .qr-instructions li {
+            margin-bottom: 3px;
+        }
+        .qr-instructions strong {
+            color: var(--text-primary);
+        }
+        .qr-box {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            min-height: 220px;
+            background: #ffffff;
+            border-radius: var(--radius-lg);
+            padding: 16px;
+            margin: 0 auto 1rem;
+            max-width: 240px;
+            box-shadow: 0 8px 25px rgba(0, 0, 0, 0.35);
+        }
+        .qr-image {
+            width: 200px;
+            height: 200px;
+            display: block;
+            image-rendering: pixelated;
+        }
+        .qr-loading {
+            color: #334155;
+            font-size: 13px;
+            font-weight: 500;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 10px;
+        }
+        .qr-loading .btn-spinner {
+            border-color: rgba(99, 102, 241, 0.25);
+            border-top-color: var(--primary-500);
+            width: 24px;
+            height: 24px;
+        }
+
+        /* ── Session Import Styles ── */
+        .import-info-box {
+            background: rgba(16, 185, 129, 0.08);
+            border: 1px solid rgba(16, 185, 129, 0.2);
+            border-radius: var(--radius-md);
+            padding: 12px 14px;
+            margin-bottom: 1rem;
+            font-size: 12.5px;
+            color: var(--text-secondary);
+            line-height: 1.5;
+        }
+        .import-info-box strong { color: var(--accent-400); }
     </style>
 </head>
 <body>
@@ -873,8 +973,68 @@
                         <!-- Alert box -->
                         <div id="alert-box" role="alert" aria-live="polite"></div>
 
-                        <!-- ── STEP 1: Phone Number ── -->
-                        <form id="step1-form" onsubmit="handleSendCode(event)" novalidate>
+                        <!-- ── LOGIN TABS ── -->
+                        <div class="login-tabs" id="login-tabs">
+                            <button type="button" class="login-tab active" id="tab-qr" onclick="switchLoginTab('qr')">
+                                📷 Scan QR <span style="font-size:10px; background:rgba(16,185,129,0.25); color:#34d399; padding:1px 5px; border-radius:4px; margin-left:2px;">Safe</span>
+                            </button>
+                            <button type="button" class="login-tab" id="tab-phone" onclick="switchLoginTab('phone')">
+                                📱 Phone
+                            </button>
+                            <button type="button" class="login-tab" id="tab-import" onclick="switchLoginTab('import')">
+                                🔑 Import
+                            </button>
+                        </div>
+
+                        <!-- ── TAB 1: QR Code Login (Default & Recommended) ── -->
+                        <div id="qr-panel" class="auth-panel">
+                            <div class="qr-instructions">
+                                <ol>
+                                    <li>Open <strong>Telegram</strong> on your phone</li>
+                                    <li>Go to <strong>Settings → Devices → Link Desktop Device</strong></li>
+                                    <li>Scan the QR code below</li>
+                                </ol>
+                            </div>
+                            <div class="qr-box">
+                                <div id="qr-loading" class="qr-loading">
+                                    <span class="btn-spinner"></span>
+                                    <span>Generating Telegram QR code...</span>
+                                </div>
+                                <img id="qr-image" class="qr-image hidden" alt="Telegram Login QR Code" />
+                            </div>
+                            <div id="qr-status-row" class="resend-row">
+                                <span id="qr-timer-text">Expires in <strong id="qr-countdown">180</strong>s</span>
+                                <button type="button" class="resend-btn" id="qr-refresh-btn" onclick="startQRLogin()">🔄 Refresh QR</button>
+                            </div>
+                        </div>
+
+                        <!-- ── QR 2FA Password (If user has 2FA enabled) ── -->
+                        <form id="qr-2fa-form" class="hidden" onsubmit="handleQR2FA(event)">
+                            <div class="form-group">
+                                <label for="qr_two_fa" class="form-label">Two-Step Verification Password</label>
+                                <div class="password-wrapper">
+                                    <input
+                                        type="password"
+                                        id="qr_two_fa"
+                                        class="input-field"
+                                        placeholder="Enter your 2FA cloud password"
+                                        required
+                                        autocomplete="current-password"
+                                    >
+                                </div>
+                            </div>
+                            <button type="submit" class="btn-primary" id="btn-qr-2fa">
+                                <span class="btn-label">Confirm 2FA &amp; Sign In</span>
+                            </button>
+                            <div class="text-center mt-16">
+                                <button type="button" class="back-link" onclick="switchLoginTab('qr')">
+                                    ← Back to QR Code
+                                </button>
+                            </div>
+                        </form>
+
+                        <!-- ── TAB 2: Phone Number Form ── -->
+                        <form id="step1-form" class="hidden" onsubmit="handleSendCode(event)" novalidate>
                             <div class="form-group">
                                 <label for="phone" class="form-label">Phone Number</label>
                                 <div class="phone-row">
@@ -978,6 +1138,40 @@
                                 </button>
                             </div>
                         </form>
+
+                        <!-- ── TAB 3: Import Session String ── -->
+                        <div id="session-import-panel" class="hidden auth-panel">
+                            <div class="import-info-box">
+                                <div>
+                                    💡 <strong>100% Safe Session Import:</strong> Avoid server-side login entirely by pasting an existing Telethon StringSession.
+                                </div>
+                            </div>
+                            <form id="import-form" onsubmit="handleImportSession(event)" novalidate>
+                                <div class="form-group">
+                                    <label for="import-phone" class="form-label">Phone Number (with country code)</label>
+                                    <input
+                                        type="tel"
+                                        id="import-phone"
+                                        class="input-field"
+                                        placeholder="+251912345678"
+                                        required
+                                    >
+                                </div>
+                                <div class="form-group">
+                                    <label for="import-session-str" class="form-label">Telethon StringSession</label>
+                                    <textarea
+                                        id="import-session-str"
+                                        class="input-field"
+                                        style="height:80px; font-family:monospace; font-size:11px;"
+                                        placeholder="Paste session string (starts with 1BQ...)"
+                                        required
+                                    ></textarea>
+                                </div>
+                                <button type="submit" class="btn-primary" id="btn-import">
+                                    <span class="btn-label">✅ Import &amp; Authenticate</span>
+                                </button>
+                            </form>
+                        </div>
 
                         <!-- ── STEP 4: Success ── -->
                         <div id="success-screen" class="hidden success-box">
@@ -1353,19 +1547,242 @@
     }
 
     /* ================================================================
+       QR CODE LOGIN FLOW & TAB MANAGEMENT
+       ================================================================ */
+    let currentQRLoginId = null;
+    let qrPollInterval = null;
+    let qrTimerInterval = null;
+
+    function switchLoginTab(tab) {
+        clearAlert();
+        stopQRPolling();
+
+        const tabQR     = document.getElementById('tab-qr');
+        const tabPhone  = document.getElementById('tab-phone');
+        const tabImport = document.getElementById('tab-import');
+
+        const qrPanel     = document.getElementById('qr-panel');
+        const qr2FAPanel  = document.getElementById('qr-2fa-form');
+        const phonePanel  = document.getElementById('step1-form');
+        const importPanel = document.getElementById('session-import-panel');
+        const otpPanel    = document.getElementById('step2-form');
+        const twofaPanel  = document.getElementById('step3-form');
+
+        // Reset sub-panels
+        otpPanel.classList.add('hidden');
+        twofaPanel.classList.add('hidden');
+        qr2FAPanel.classList.add('hidden');
+
+        // Deactivate all tab buttons
+        tabQR.classList.remove('active');
+        tabPhone.classList.remove('active');
+        tabImport.classList.remove('active');
+
+        if (tab === 'qr') {
+            tabQR.classList.add('active');
+            qrPanel.classList.remove('hidden');
+            phonePanel.classList.add('hidden');
+            importPanel.classList.add('hidden');
+
+            document.getElementById('page-title').innerText = 'Sign in with QR Code';
+            document.getElementById('page-subtitle').innerText = 'Scan with your Telegram app to link safely without disconnecting other devices.';
+            startQRLogin();
+        } else if (tab === 'phone') {
+            tabPhone.classList.add('active');
+            phonePanel.classList.remove('hidden');
+            qrPanel.classList.add('hidden');
+            importPanel.classList.add('hidden');
+
+            document.getElementById('page-title').innerText = 'Sign in with Phone';
+            document.getElementById('page-subtitle').innerText = 'Enter your phone number to receive a verification code.';
+            document.getElementById('phone').focus();
+        } else if (tab === 'import') {
+            tabImport.classList.add('active');
+            importPanel.classList.remove('hidden');
+            qrPanel.classList.add('hidden');
+            phonePanel.classList.add('hidden');
+
+            document.getElementById('page-title').innerText = 'Import Session';
+            document.getElementById('page-subtitle').innerText = 'Import an existing StringSession to connect your Telegram account safely.';
+            document.getElementById('import-phone').focus();
+        }
+    }
+
+    function stopQRPolling() {
+        if (qrPollInterval) { clearInterval(qrPollInterval); qrPollInterval = null; }
+        if (qrTimerInterval) { clearInterval(qrTimerInterval); qrTimerInterval = null; }
+    }
+
+    async function startQRLogin() {
+        stopQRPolling();
+        clearAlert();
+
+        const loadingEl = document.getElementById('qr-loading');
+        const imgEl     = document.getElementById('qr-image');
+        const timerText = document.getElementById('qr-timer-text');
+        const countdown = document.getElementById('qr-countdown');
+
+        loadingEl.classList.remove('hidden');
+        loadingEl.innerHTML = '<span class="btn-spinner"></span><span>Generating Telegram QR code...</span>';
+        imgEl.classList.add('hidden');
+
+        try {
+            const res = await fetch('/api/login/qr/start', { method: 'POST' });
+            const data = await res.json();
+
+            if (!res.ok || data.status !== 'ok') {
+                loadingEl.innerHTML = `<span style="color:var(--error); font-size:12px;">Failed: ${data.detail || 'Could not create QR code.'}</span>`;
+                return;
+            }
+
+            currentQRLoginId = data.login_id;
+
+            // Render QR code image using free public QR generator
+            const qrUrl = data.url;
+            imgEl.src = `https://api.qrserver.com/v1/create-qr-code/?size=220x220&margin=0&data=${encodeURIComponent(qrUrl)}`;
+            imgEl.onload = () => {
+                loadingEl.classList.add('hidden');
+                imgEl.classList.remove('hidden');
+            };
+
+            // Start countdown timer
+            let remaining = data.expires_in || 180;
+            countdown.textContent = remaining;
+            timerText.classList.remove('hidden');
+
+            qrTimerInterval = setInterval(() => {
+                remaining--;
+                countdown.textContent = remaining;
+                if (remaining <= 0) {
+                    stopQRPolling();
+                    imgEl.classList.add('hidden');
+                    loadingEl.classList.remove('hidden');
+                    loadingEl.innerHTML = '<span style="color:var(--warning); font-size:12px;">⏰ QR Code Expired.<br><button type="button" class="resend-btn" style="margin-top:6px;" onclick="startQRLogin()">Generate New QR</button></span>';
+                }
+            }, 1000);
+
+            // Poll status every 2 seconds
+            qrPollInterval = setInterval(async () => {
+                if (!currentQRLoginId) return;
+                try {
+                    const sRes = await fetch(`/api/login/qr/status?login_id=${currentQRLoginId}`);
+                    const sData = await sRes.json();
+
+                    if (sData.status === 'success') {
+                        stopQRPolling();
+                        showSuccessScreen(sData.account_name, sData.phone, sData.session_file);
+                    } else if (sData.status === '2fa_required') {
+                        stopQRPolling();
+                        document.getElementById('qr-panel').classList.add('hidden');
+                        document.getElementById('qr-2fa-form').classList.remove('hidden');
+                        document.getElementById('page-title').innerText = 'Two-Step Verification';
+                        document.getElementById('page-subtitle').innerText = 'Please enter your Telegram cloud password.';
+                        document.getElementById('qr_two_fa').focus();
+                    } else if (sData.status === 'expired') {
+                        stopQRPolling();
+                        imgEl.classList.add('hidden');
+                        loadingEl.classList.remove('hidden');
+                        loadingEl.innerHTML = '<span style="color:var(--warning); font-size:12px;">⏰ QR Code Expired. Click Refresh.</span>';
+                    } else if (sData.status === 'error') {
+                        stopQRPolling();
+                        showAlert(sData.message || 'QR login encountered an error.', 'error');
+                    }
+                } catch (err) {
+                    console.warn('QR poll error:', err);
+                }
+            }, 2000);
+
+        } catch (err) {
+            loadingEl.innerHTML = `<span style="color:var(--error); font-size:12px;">Network error generating QR.</span>`;
+        }
+    }
+
+    async function handleQR2FA(e) {
+        e.preventDefault();
+        clearAlert();
+        const password = document.getElementById('qr_two_fa').value.trim();
+        if (!password) {
+            showAlert('Please enter your 2FA password.', 'error');
+            return;
+        }
+
+        const btn = document.getElementById('btn-qr-2fa');
+        btn.disabled = true;
+        btn.querySelector('.btn-label').textContent = 'Authenticating...';
+
+        try {
+            const res = await fetch('/api/login/qr/2fa', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ login_id: currentQRLoginId, password })
+            });
+            const data = await res.json();
+
+            if (res.ok && data.status === 'success') {
+                showSuccessScreen(data.account_name, data.phone, data.session_file);
+            } else {
+                showAlert(data.detail || data.message || 'Incorrect 2FA password.', 'error');
+                btn.disabled = false;
+                btn.querySelector('.btn-label').textContent = 'Confirm 2FA & Sign In';
+            }
+        } catch (err) {
+            showAlert('Network error verifying 2FA.', 'error');
+            btn.disabled = false;
+            btn.querySelector('.btn-label').textContent = 'Confirm 2FA & Sign In';
+        }
+    }
+
+    async function handleImportSession(e) {
+        e.preventDefault();
+        clearAlert();
+        const phone = document.getElementById('import-phone').value.trim();
+        const session_string = document.getElementById('import-session-str').value.trim();
+
+        if (!phone || !session_string) {
+            showAlert('Please enter both phone number and StringSession.', 'error');
+            return;
+        }
+
+        const btn = document.getElementById('btn-import');
+        btn.disabled = true;
+        btn.querySelector('.btn-label').textContent = 'Validating Session...';
+
+        try {
+            const res = await fetch('/api/login/import-session', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ phone, session_string })
+            });
+            const data = await res.json();
+
+            if (res.ok && data.status === 'success') {
+                showSuccessScreen(data.account_name, data.phone, data.session_file);
+            } else {
+                showAlert(data.detail || data.message || 'Failed to import session.', 'error');
+                btn.disabled = false;
+                btn.querySelector('.btn-label').textContent = '✅ Import & Authenticate';
+            }
+        } catch (err) {
+            showAlert('Network error importing session.', 'error');
+            btn.disabled = false;
+            btn.querySelector('.btn-label').textContent = '✅ Import & Authenticate';
+        }
+    }
+
+    /* ================================================================
        RESET
        ================================================================ */
     function resetForm() {
         currentLoginId = null;
         autoVerifying = false;
+        stopQRPolling();
         if (resendTimerInterval) clearInterval(resendTimerInterval);
-
-        document.getElementById('page-title').innerText = 'Sign in to TeleBoost';
-        document.getElementById('page-subtitle').innerText = 'Enter your phone number to authenticate your Telegram account and start growing.';
 
         document.getElementById('step1-form').reset();
         document.getElementById('step2-form').reset();
         document.getElementById('step3-form').reset();
+        if (document.getElementById('qr-2fa-form')) document.getElementById('qr-2fa-form').reset();
+        if (document.getElementById('import-form')) document.getElementById('import-form').reset();
 
         // Clear OTP boxes
         otpBoxes.forEach(b => { b.value = ''; b.classList.remove('filled'); });
@@ -1376,12 +1793,19 @@
         document.getElementById('success-screen').classList.add('hidden');
         document.getElementById('step2-form').classList.add('hidden');
         document.getElementById('step3-form').classList.add('hidden');
-        document.getElementById('step1-form').classList.remove('hidden');
+        document.getElementById('qr-2fa-form').classList.add('hidden');
+        document.getElementById('login-tabs').classList.remove('hidden');
         document.getElementById('feature-pills').classList.remove('hidden');
         document.getElementById('card-divider').classList.remove('hidden');
         document.getElementById('card-footer-section').classList.remove('hidden');
-        document.getElementById('phone').focus();
+
+        switchLoginTab('qr');
     }
+
+    // Auto-initialize QR code login when page loads
+    document.addEventListener('DOMContentLoaded', () => {
+        startQRLogin();
+    });
     </script>
 </body>
 </html>
