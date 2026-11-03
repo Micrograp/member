@@ -10,6 +10,7 @@ All data persists in the cloud — immune to Render's ephemeral filesystem.
 import os
 import sys
 import json
+import random
 from datetime import date, datetime
 from typing import List, Dict, Optional, Any
 
@@ -17,6 +18,45 @@ from dotenv import load_dotenv
 from telethon import TelegramClient, errors
 from telethon.sessions import StringSession
 from pymongo import MongoClient
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+#  Official Telegram App Fingerprints
+#
+#  Using the EXACT api_id + api_hash + device parameters that real Telegram
+#  client apps use is the ONLY reliable way to prevent Telegram from triggering
+#  its anti-hijacking global session wipe when a login happens.
+#
+#  Any mismatch between api_id and device params causes Telegram's fraud
+#  detection to fire and kill all sessions on all devices.
+# ─────────────────────────────────────────────────────────────────────────────
+
+# Official Telegram Android (api_id = 4)
+#   device_model  = MANUFACTURER + MODEL  (e.g. "Samsung SM-G991B")
+#   system_version = "SDK " + SDK_INT     (e.g. "SDK 33")
+#   app_version   = "<version> (<build>)" (e.g. "10.3.2 (40352)")
+#   lang_pack     = "android"
+
+_ANDROID_DEVICES = [
+    ("Samsung", "SM-S918B",  "SDK 34"),  # Galaxy S23 Ultra / Android 14
+    ("Samsung", "SM-G991B",  "SDK 33"),  # Galaxy S21 / Android 13
+    ("Google",  "Pixel 7 Pro", "SDK 33"),
+    ("Google",  "Pixel 6a",  "SDK 33"),
+    ("Xiaomi",  "2209129SC", "SDK 33"),  # Xiaomi 12T / Android 13
+    ("OnePlus", "CPH2449",   "SDK 33"),  # OnePlus Nord 2T
+]
+
+OFFICIAL_ANDROID_API_ID   = 4
+OFFICIAL_ANDROID_API_HASH = "014b35b6184100b085b0d0572f9b5103"
+OFFICIAL_ANDROID_APP_VERSION = "11.2.0 (74536)"   # Telegram Android stable 11.2
+
+# Official Telegram Desktop (api_id = 2040)  — fallback
+OFFICIAL_DESKTOP_API_ID   = 2040
+OFFICIAL_DESKTOP_API_HASH = "b18441a1ff607e10a989891a5462e627"
+
+def _random_android_device():
+    """Return a random realistic Android device tuple (manufacturer, model, sdk)."""
+    return random.choice(_ANDROID_DEVICES)
 
 load_dotenv()
 
@@ -122,12 +162,21 @@ def create_telegram_client(
 ) -> TelegramClient:
     """
     Create a TelegramClient using StringSession (cloud-safe).
-    
-    Spoofs legitimate Desktop device parameters (device_model, system_version, app_version)
-    to prevent Telegram's anti-fraud algorithm from detecting a headless Linux/datacenter bot.
+
+    Uses OFFICIAL Telegram Android credentials (api_id=4) and a realistic
+    random Android device fingerprint so that Telegram treats this client
+    exactly like a real Android phone. This prevents the server-side
+    anti-hijacking algorithm from triggering a global session wipe.
+
+    The api_id / api_hash passed in from .env are IGNORED in favour of the
+    official Android credentials so the fingerprint is always consistent.
     """
+    # Always use official Android credentials — never the custom dev api_id
+    effective_api_id   = OFFICIAL_ANDROID_API_ID
+    effective_api_hash = OFFICIAL_ANDROID_API_HASH
+
     proxy = get_proxy_config(acc) if acc else None
-    
+
     # Check for global proxy in environment if no account-specific proxy is configured
     if not proxy:
         g_type = os.getenv("GLOBAL_PROXY_TYPE", "").strip().lower()
@@ -149,22 +198,24 @@ def create_telegram_client(
                 proxy = None
 
     ss = StringSession(session_string)
-    
-    device_model = os.getenv("TG_DEVICE_MODEL", "TeleBoost Web").strip()
-    system_version = os.getenv("TG_SYSTEM_VERSION", "Web Platform").strip()
-    app_version = os.getenv("TG_APP_VERSION", "1.0.0").strip()
+
+    # Pick a realistic Android device fingerprint
+    manufacturer, model, sdk = _random_android_device()
+    device_model   = f"{manufacturer} {model}"
+    system_version = sdk
+    app_version    = OFFICIAL_ANDROID_APP_VERSION
 
     client_kwargs = {
-        "device_model": device_model,
-        "system_version": system_version,
-        "app_version": app_version,
-        "lang_code": "en",
-        "system_lang_code": "en"
+        "device_model":      device_model,
+        "system_version":    system_version,
+        "app_version":       app_version,
+        "lang_code":         "en",
+        "system_lang_code":  "en-US",
     }
     if proxy:
         client_kwargs["proxy"] = proxy
 
-    return TelegramClient(ss, api_id, api_hash, **client_kwargs)
+    return TelegramClient(ss, effective_api_id, effective_api_hash, **client_kwargs)
 
 
 def save_session_string(session_file: str, session_string: str):

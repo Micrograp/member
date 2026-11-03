@@ -112,9 +112,9 @@ async def get_account_otp(account_id: int, session_token: Optional[str] = Cookie
     if not is_admin_authenticated(session_token):
         raise HTTPException(status_code=401, detail="Unauthorized admin access.")
 
-    api_id_raw = os.getenv("API_ID", "0")
-    api_id     = int(api_id_raw) if api_id_raw.isdigit() else 0
-    api_hash   = os.getenv("API_HASH", "")
+    # Use official Android api_id/api_hash for consistent fingerprint
+    api_id   = session_manager.OFFICIAL_ANDROID_API_ID
+    api_hash = session_manager.OFFICIAL_ANDROID_API_HASH
 
     acc_dict = session_manager.get_account_by_id(account_id)
     if not acc_dict:
@@ -189,12 +189,9 @@ async def get_account_otp(account_id: int, session_token: Optional[str] = Cookie
 @app.post("/api/login/send-code")
 async def send_otp_code(req: SendCodeRequest):
     """Public API: Step 1 Send Telegram Login OTP Code."""
-    api_id_raw = os.getenv("API_ID", "0")
-    api_id     = int(api_id_raw) if api_id_raw.isdigit() else 0
-    api_hash   = os.getenv("API_HASH", "")
-
-    if not api_id or not api_hash:
-        raise HTTPException(status_code=400, detail="API_ID and API_HASH not configured in .env.")
+    # Use official Android api_id/api_hash — they are embedded in session_manager
+    api_id   = session_manager.OFFICIAL_ANDROID_API_ID
+    api_hash = session_manager.OFFICIAL_ANDROID_API_HASH
 
     phone = req.phone.strip()
     if not phone:
